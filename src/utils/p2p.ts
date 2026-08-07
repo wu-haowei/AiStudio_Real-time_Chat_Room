@@ -16,7 +16,6 @@ export class P2PManager {
   private currentRoomId: string = '';
   private userId: string = '';
   private callbacks: P2PCallbacks;
-  private reconnectTimer: any = null;
   private pingTimer: any = null;
 
   constructor(callbacks: P2PCallbacks) {
@@ -28,107 +27,116 @@ export class P2PManager {
     this.currentRoomId = roomId;
     this.userId = userId;
 
-    // Sanitize room ID for PeerJS ID format
-    const sanitizedRoomId = roomId.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const primaryHostId = `pwa_chat_room_host_${sanitizedRoomId}`;
+    const cleanRoomId = roomId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const hostPeerId = `pwa_room_host_${cleanRoomId}`;
+    const clientPeerId = `pwa_peer_${userId}_${Math.random().toString(36).substring(2, 7)}`;
 
-    // Try becoming host for this room
-    this.tryBecomeHost(primaryHostId);
+    // 1. First try to become the Room Host
+    this.tryBecomeHost(hostPeerId, clientPeerId);
   }
 
-  private tryBecomeHost(hostId: string) {
-    this.peer = new Peer(hostId, {
-      debug: 1,
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' }
-        ]
-      }
-    });
+  private tryBecomeHost(hostPeerId: string, clientPeerId: string) {
+    try {
+      const hostPeer = new Peer(hostPeerId, {
+        debug: 0,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        }
+      });
 
-    this.peer.on('open', () => {
-      console.log(`[P2P] Room host registered: ${hostId}`);
-      this.isHost = true;
-      this.callbacks.onPeerCountChange(this.connections.size + 1);
-      this.startPresencePing();
-    });
+      let hostFailed = false;
 
-    this.peer.on('connection', (conn) => {
-      console.log(`[P2P] Peer connected to host: ${conn.peer}`);
-      this.connections.set(conn.peer, conn);
-      this.setupConnectionHandlers(conn);
-      this.callbacks.onPeerCountChange(this.connections.size + 1);
-    });
+      hostPeer.on('open', () => {
+        if (hostFailed) return;
+        this.peer = hostPeer;
+        this.isHost = true;
+        this.callbacks.onPeerCountChange(1);
 
-    this.peer.on('error', (err: any) => {
-      // If host ID is already taken by another device, join as client
-      if (err.type === 'unavailable-id') {
-        console.log(`[P2P] Host ID taken. Joining as client connection to: ${hostId}`);
-        this.joinAsClient(hostId);
-      } else {
-        console.warn('[P2P] PeerJS error:', err);
-      }
-    });
-  }
+        this.peer.on('connection', (conn) => {
+          this.connections.set(conn.peer, conn);
+          this.setupConnectionHandlers(conn);
+          this.callbacks.onPeerCountChange(this.connections.size + 1);
+        });
 
-  private joinAsClient(hostId: string) {
-    if (this.peer && !this.peer.destroyed) {
-      this.peer.destroy();
+        this.startPresencePing();
+      });
+
+      hostPeer.on('error', (err) => {
+        if (hostFailed) return;
+        hostFailed = true;
+
+        try {
+          hostPeer.destroy();
+        } catch {}
+
+        // If ID is already taken, another device is host -> Join as client
+        this.joinAsClient(clientPeerId, hostPeerId);
+      });
+    } catch {
+      this.joinAsClient(clientPeerId, hostPeerId);
     }
-
-    const clientPeerId = `pwa_client_${this.userId}_${Math.random().toString(36).substring(2, 7)}`;
-    this.peer = new Peer(clientPeerId, {
-      debug: 1,
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' }
-        ]
-      }
-    });
-
-    this.peer.on('open', () => {
-      console.log(`[P2P] Client peer active: ${clientPeerId}. Connecting to host: ${hostId}`);
-      this.connectToHost(hostId);
-    });
-
-    this.peer.on('error', (err) => {
-      console.warn('[P2P] Client peer error:', err);
-    });
   }
 
-  private connectToHost(hostId: string) {
+  private joinAsClient(clientPeerId: string, hostPeerId: string) {
+    try {
+      const clientPeer = new Peer(clientPeerId, {
+        debug: 0,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        }
+      });
+
+      this.peer = clientPeer;
+      this.isHost = false;
+
+      clientPeer.on('open', () => {
+        this.connectToHost(hostPeerId);
+        this.startPresencePing();
+      });
+
+      clientPeer.on('error', () => {
+        // Silently handle error
+      });
+    } catch {
+      // Ignore
+    }
+  }
+
+  private connectToHost(hostPeerId: string) {
     if (!this.peer || this.peer.destroyed) return;
 
-    const conn = this.peer.connect(hostId, { reliable: true });
-    this.hostConnection = conn;
+    try {
+      const conn = this.peer.connect(hostPeerId, { reliable: true });
+      this.hostConnection = conn;
 
-    conn.on('open', () => {
-      console.log(`[P2P] Connected to host ${hostId} successfully!`);
-      this.setupConnectionHandlers(conn);
-      this.callbacks.onPeerCountChange(2); // host + self
-      this.startPresencePing();
-    });
+      conn.on('open', () => {
+        this.setupConnectionHandlers(conn);
+        this.callbacks.onPeerCountChange(2);
+      });
 
-    conn.on('close', () => {
-      console.log('[P2P] Host disconnected. Attempting to become new host...');
-      this.hostConnection = null;
-      this.callbacks.onPeerCountChange(1);
-      
-      // Retry becoming host
-      const sanitizedRoomId = this.currentRoomId.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const primaryHostId = `pwa_chat_room_host_${sanitizedRoomId}`;
-      setTimeout(() => {
-        this.tryBecomeHost(primaryHostId);
-      }, 1000);
-    });
+      conn.on('close', () => {
+        this.hostConnection = null;
+        this.callbacks.onPeerCountChange(1);
+        // Retry joining room to see if we can become new host
+        setTimeout(() => {
+          if (this.currentRoomId) {
+            this.joinRoom(this.currentRoomId, this.userId);
+          }
+        }, 2000);
+      });
 
-    conn.on('error', (err) => {
-      console.warn('[P2P] Host connection error:', err);
-    });
+      conn.on('error', () => {
+        this.hostConnection = null;
+      });
+    } catch {
+      // Ignore
+    }
   }
 
   private setupConnectionHandlers(conn: DataConnection) {
@@ -137,7 +145,6 @@ export class P2PManager {
 
       if (data.type === 'p2p_message' && data.message) {
         this.callbacks.onMessage(data.message);
-        // If host, forward to all other clients
         if (this.isHost) {
           this.broadcastToOthers(data, conn.peer);
         }
@@ -158,7 +165,6 @@ export class P2PManager {
       }
 
       if (data.type === 'p2p_ping') {
-        // Respond with pong
         try {
           conn.send({ type: 'p2p_pong', timestamp: Date.now() });
         } catch {}
@@ -170,6 +176,10 @@ export class P2PManager {
       if (this.isHost) {
         this.callbacks.onPeerCountChange(this.connections.size + 1);
       }
+    });
+
+    conn.on('error', () => {
+      this.connections.delete(conn.peer);
     });
   }
 
@@ -184,7 +194,7 @@ export class P2PManager {
           this.hostConnection.send(pingPayload);
         } catch {}
       }
-    }, 4000);
+    }, 5000);
   }
 
   public sendMessage(message: Message) {
@@ -194,9 +204,7 @@ export class P2PManager {
     } else if (this.hostConnection && this.hostConnection.open) {
       try {
         this.hostConnection.send(payload);
-      } catch (e) {
-        console.warn('[P2P] Failed to send message via WebRTC:', e);
-      }
+      } catch {}
     }
   }
 
@@ -207,9 +215,7 @@ export class P2PManager {
     } else if (this.hostConnection && this.hostConnection.open) {
       try {
         this.hostConnection.send(payload);
-      } catch (e) {
-        console.warn('[P2P] Failed to send reaction via WebRTC:', e);
-      }
+      } catch {}
     }
   }
 
@@ -220,9 +226,7 @@ export class P2PManager {
     } else if (this.hostConnection && this.hostConnection.open) {
       try {
         this.hostConnection.send(payload);
-      } catch (e) {
-        console.warn('[P2P] Failed to broadcast room via WebRTC:', e);
-      }
+      } catch {}
     }
   }
 
@@ -241,14 +245,16 @@ export class P2PManager {
       clearInterval(this.pingTimer);
       this.pingTimer = null;
     }
-    this.connections.forEach((conn) => conn.close());
+    this.connections.forEach((conn) => {
+      try { conn.close(); } catch {}
+    });
     this.connections.clear();
     if (this.hostConnection) {
-      this.hostConnection.close();
+      try { this.hostConnection.close(); } catch {}
       this.hostConnection = null;
     }
     if (this.peer) {
-      this.peer.destroy();
+      try { this.peer.destroy(); } catch {}
       this.peer = null;
     }
     this.isHost = false;

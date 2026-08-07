@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
 import { CreateRoomModal } from './components/CreateRoomModal';
+import { RoomPasswordModal } from './components/RoomPasswordModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { NotificationBanner } from './components/NotificationBanner';
 import { P2PManager } from './utils/p2p';
@@ -26,6 +27,7 @@ import {
 const LOCAL_STORAGE_PROFILE_KEY = 'realtime_chat_user_profile_v1';
 const LOCAL_STORAGE_ROOMS_KEY = 'realtime_chat_rooms_v3';
 const LOCAL_STORAGE_MSGS_KEY = 'realtime_chat_msgs_v3';
+const LOCAL_STORAGE_UNLOCKED_ROOMS_KEY = 'realtime_chat_unlocked_rooms_v1';
 
 const DEFAULT_ROOMS: Room[] = [
   {
@@ -105,6 +107,18 @@ export default function App() {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('全部');
 
+  // Unlocked Room IDs & Password Modal State
+  const [unlockedRoomIds, setUnlockedRoomIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_UNLOCKED_ROOMS_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return ['general'];
+  });
+  const [pendingRoomForPassword, setPendingRoomForPassword] = useState<Room | null>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordModalError, setPasswordModalError] = useState('');
+
   // Modals & Panels
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -123,10 +137,15 @@ export default function App() {
 
   const userProfileRef = useRef(userProfile);
   const currentRoomIdRef = useRef(currentRoomId);
+  const roomsRef = useRef(rooms);
 
   useEffect(() => {
     userProfileRef.current = userProfile;
   }, [userProfile]);
+
+  useEffect(() => {
+    roomsRef.current = rooms;
+  }, [rooms]);
 
   useEffect(() => {
     currentRoomIdRef.current = currentRoomId;
@@ -509,10 +528,12 @@ export default function App() {
           );
 
           if (currRoom) {
+            const roomObj = roomsRef.current.find((r) => r.id === currRoom);
             ws.send(
               JSON.stringify({
                 type: 'join_room',
                 roomId: currRoom,
+                password: roomObj?.password,
                 username: prof.username,
                 avatar: prof.avatar
               })
@@ -538,16 +559,30 @@ export default function App() {
                 if (typeof data.onlineUsersCount === 'number') setOnlineCount(data.onlineUsersCount);
 
                 // Auto-join target room upon connection initialization
-                const targetRoom = currentRoomIdRef.current || 'general';
+                const targetRoomId = currentRoomIdRef.current || 'general';
+                const roomObj = (data.rooms || roomsRef.current).find((r: Room) => r.id === targetRoomId);
                 if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
                   wsRef.current.send(
                     JSON.stringify({
                       type: 'join_room',
-                      roomId: targetRoom,
+                      roomId: targetRoomId,
+                      password: roomObj?.password,
                       username: userProfileRef.current.username,
                       avatar: userProfileRef.current.avatar
                     })
                   );
+                }
+                break;
+              }
+
+              case 'room_password_invalid': {
+                if (data.roomId) {
+                  const targetRoom = roomsRef.current.find((r) => r.id === data.roomId);
+                  if (targetRoom) {
+                    setPendingRoomForPassword(targetRoom);
+                    setPasswordModalError('私密房間密碼不正確');
+                    setIsPasswordModalOpen(true);
+                  }
                 }
                 break;
               }
@@ -806,22 +841,64 @@ export default function App() {
     return () => clearInterval(syncInterval);
   }, [currentRoomId, isStaticHost]);
 
-  // Handle switching rooms
-  const handleSelectRoom = (roomId: string) => {
-    if (roomId === currentRoomId) return;
-
+  // Helper to switch room & send WS join_room
+  const enterRoom = (roomId: string, passwordAttempt?: string) => {
     setCurrentRoomId(roomId);
     setTypingUsers([]);
+
+    const targetRoomObj = roomsRef.current.find((r) => r.id === roomId);
+    const passwordToPass = passwordAttempt || targetRoomObj?.password;
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
           type: 'join_room',
           roomId,
+          password: passwordToPass,
           username: userProfile.username,
           avatar: userProfile.avatar
         })
       );
+    }
+  };
+
+  // Handle switching rooms
+  const handleSelectRoom = (roomId: string) => {
+    if (roomId === currentRoomId) return;
+
+    const targetRoom = rooms.find((r) => r.id === roomId);
+    if (!targetRoom) return;
+
+    // Password verification for private rooms
+    if (targetRoom.isPrivate && targetRoom.password && !unlockedRoomIds.includes(roomId)) {
+      setPendingRoomForPassword(targetRoom);
+      setPasswordModalError('');
+      setIsPasswordModalOpen(true);
+      return;
+    }
+
+    enterRoom(roomId);
+  };
+
+  // Confirm password entered in modal
+  const handleConfirmRoomPassword = (enteredPassword: string) => {
+    if (!pendingRoomForPassword) return;
+
+    if (enteredPassword === pendingRoomForPassword.password) {
+      const roomId = pendingRoomForPassword.id;
+      setUnlockedRoomIds((prev) => {
+        if (prev.includes(roomId)) return prev;
+        const next = [...prev, roomId];
+        try { localStorage.setItem(LOCAL_STORAGE_UNLOCKED_ROOMS_KEY, JSON.stringify(next)); } catch {}
+        return next;
+      });
+
+      setIsPasswordModalOpen(false);
+      enterRoom(roomId, enteredPassword);
+      setPendingRoomForPassword(null);
+      setPasswordModalError('');
+    } else {
+      setPasswordModalError('密碼錯誤，請重新輸入');
     }
   };
 
@@ -1071,8 +1148,15 @@ export default function App() {
       return updated;
     });
 
-    // 2. Switch to new room
-    setCurrentRoomId(newRoomId);
+    // 2. Switch to new room & unlock created room
+    setUnlockedRoomIds((prev) => {
+      if (prev.includes(newRoomId)) return prev;
+      const next = [...prev, newRoomId];
+      try { localStorage.setItem(LOCAL_STORAGE_UNLOCKED_ROOMS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    enterRoom(newRoomId, roomData.password);
     setIsCreateModalOpen(false);
     setIsSidebarOpen(false);
 
@@ -1188,6 +1272,19 @@ export default function App() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreateRoom={handleCreateRoom}
+      />
+
+      {/* Room Password Verification Modal */}
+      <RoomPasswordModal
+        isOpen={isPasswordModalOpen}
+        room={pendingRoomForPassword}
+        errorMsg={passwordModalError}
+        onClose={() => {
+          setIsPasswordModalOpen(false);
+          setPendingRoomForPassword(null);
+          setPasswordModalError('');
+        }}
+        onConfirm={handleConfirmRoomPassword}
       />
 
       {/* User Profile Modal */}

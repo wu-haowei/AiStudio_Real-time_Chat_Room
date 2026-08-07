@@ -243,7 +243,7 @@ wss.on('connection', (ws) => {
         }
 
         case 'join_room': {
-          const { roomId, username, avatar } = payload;
+          const { roomId, username, avatar, password } = payload;
           if (username) meta.username = username;
           if (avatar) meta.avatar = avatar;
 
@@ -256,6 +256,20 @@ wss.on('connection', (ws) => {
               })
             );
             return;
+          }
+
+          // Check password for private rooms
+          if (targetRoom.isPrivate && targetRoom.password) {
+            if (password !== targetRoom.password) {
+              ws.send(
+                JSON.stringify({
+                  type: 'room_password_invalid',
+                  roomId,
+                  message: '私密房間密碼不正確'
+                })
+              );
+              return;
+            }
           }
 
           // Leave previous room if any

@@ -16,7 +16,8 @@ import {
   Search,
   MessageSquare,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Lock
 } from 'lucide-react';
 import { Room, Message, ReplyRef, UserProfile } from '../types';
 
@@ -204,8 +205,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="truncate text-sm font-bold text-white">
+              <h2 className="truncate text-sm font-bold text-white flex items-center gap-1.5">
                 {room.title}
+                {room.isPrivate && (
+                  <Lock className="h-3.5 w-3.5 text-amber-400 shrink-0" title="私密保護房間" />
+                )}
               </h2>
               <span className="shrink-0 rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-medium text-indigo-300 border border-white/10">
                 {room.category}
