@@ -426,10 +426,10 @@ wss.on('connection', (ws) => {
         }
 
         case 'create_room': {
-          const { title, description, category, icon, isPrivate, password } = payload;
+          const { id, title, description, category, icon, isPrivate, password } = payload;
           if (!title) return;
 
-          const newRoomId = 'room_' + Date.now();
+          const newRoomId = (id && typeof id === 'string') ? id : ('room_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
           const newRoom: Room = {
             id: newRoomId,
             title: title.trim(),
@@ -445,24 +445,37 @@ wss.on('connection', (ws) => {
           };
 
           rooms.set(newRoomId, newRoom);
-          roomMessages.set(newRoomId, [
-            {
-              id: 'msg_welcome_' + Date.now(),
-              roomId: newRoomId,
-              userId: 'system',
-              username: '🤖 系統助理',
-              avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=system',
-              text: `🎉 歡迎來到「${newRoom.title}」！發送第一條訊息開始聊天吧！`,
-              type: 'text',
-              timestamp: Date.now(),
-              reactions: {}
-            }
-          ]);
+          const welcomeMsg: Message = {
+            id: 'msg_welcome_' + Date.now(),
+            roomId: newRoomId,
+            userId: 'system',
+            username: '🤖 系統助理',
+            avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=system',
+            text: `🎉 歡迎來到「${newRoom.title}」！發送第一條訊息開始聊天吧！`,
+            type: 'text',
+            timestamp: Date.now(),
+            reactions: {}
+          };
+          roomMessages.set(newRoomId, [welcomeMsg]);
+
+          // Join creator into the new room on server side
+          if (meta.currentRoomId && meta.currentRoomId !== newRoomId) {
+            broadcastToRoom(meta.currentRoomId, {
+              type: 'user_left_room',
+              roomId: meta.currentRoomId,
+              userId: meta.userId,
+              username: meta.username,
+              timestamp: Date.now()
+            });
+          }
+          meta.currentRoomId = newRoomId;
 
           ws.send(
             JSON.stringify({
               type: 'room_created_success',
-              roomId: newRoomId
+              roomId: newRoomId,
+              room: newRoom,
+              messages: [welcomeMsg]
             })
           );
 

@@ -384,6 +384,20 @@ export default function App() {
                 if (data.roomId) {
                   setCurrentRoomId(data.roomId);
                 }
+                if (data.room) {
+                  setRooms((prev) => {
+                    if (prev.some((r) => r.id === data.roomId)) {
+                      return prev.map((r) => (r.id === data.roomId ? { ...r, ...data.room } : r));
+                    }
+                    return [data.room, ...prev];
+                  });
+                }
+                if (data.messages && data.roomId) {
+                  setAllRoomMessages((prev) => ({
+                    ...prev,
+                    [data.roomId]: data.messages
+                  }));
+                }
                 break;
               }
             }
@@ -620,6 +634,7 @@ export default function App() {
       wsRef.current.send(
         JSON.stringify({
           type: 'create_room',
+          id: newRoomId,
           ...roomData
         })
       );
