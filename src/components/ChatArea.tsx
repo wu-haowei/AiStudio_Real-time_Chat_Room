@@ -80,8 +80,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
   if (!room) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center bg-slate-950 p-6 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-900 border border-slate-800 text-blue-400 shadow-xl mb-4">
+      <main className="flex flex-1 flex-col items-center justify-center bg-[#0f172a]/80 p-6 text-center backdrop-blur-xl">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-indigo-400 shadow-2xl mb-4 backdrop-blur-md">
           <MessageSquare className="h-8 w-8" />
         </div>
         <h2 className="text-lg font-bold text-white mb-1">請選擇或建立聊天房間</h2>
@@ -90,7 +90,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         </p>
         <button
           onClick={onOpenMobileSidebar}
-          className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white md:hidden hover:bg-blue-500"
+          className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white md:hidden hover:bg-indigo-500 shadow-lg shadow-indigo-600/30"
         >
           查看房間列表
         </button>
@@ -181,19 +181,19 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   return (
-    <main className="flex flex-1 flex-col h-full overflow-hidden bg-slate-950 relative">
+    <main className="flex flex-1 flex-col h-full overflow-hidden bg-transparent relative">
       {/* Room Header */}
-      <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900/80 px-4 backdrop-blur-md">
+      <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-white/5 px-4 backdrop-blur-xl">
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={onOpenMobileSidebar}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-800/80 text-slate-300 md:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 md:hidden hover:bg-white/10"
             title="選單"
           >
             <MessageSquare className="h-4 w-4" />
           </button>
 
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-lg shadow-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 border border-white/10 text-lg shadow-sm">
             {room.icon || '💬'}
           </div>
 
@@ -202,7 +202,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               <h2 className="truncate text-sm font-bold text-white">
                 {room.title}
               </h2>
-              <span className="shrink-0 rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-400 border border-blue-500/20">
+              <span className="shrink-0 rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-medium text-indigo-300 border border-white/10">
                 {room.category}
               </span>
             </div>
@@ -215,38 +215,38 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         {/* Right tools */}
         <div className="flex items-center gap-2 shrink-0">
           {/* Active members pill */}
-          <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-slate-800/80 px-3 py-1 text-xs text-slate-300 border border-slate-700/60">
+          <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300 border border-white/10 backdrop-blur-md">
             <Users className="h-3.5 w-3.5 text-emerald-400" />
             <span>{room.activeUserCount || 1} 人在線</span>
           </div>
 
           {/* Search inside room */}
           <div className="relative hidden md:block">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="搜尋訊息..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              className="w-36 rounded-lg border border-slate-800 bg-slate-950 pl-8 pr-2 py-1 text-xs text-slate-200 placeholder-slate-500 focus:w-48 focus:border-blue-500 focus:outline-none transition-all"
+              className="w-36 rounded-xl border border-white/10 bg-white/5 pl-8 pr-2 py-1 text-xs text-slate-100 placeholder-slate-400 focus:w-48 focus:border-indigo-400 focus:outline-none transition-all backdrop-blur-md"
             />
           </div>
 
           {/* Share room link */}
           <button
             onClick={handleShareRoom}
-            className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-all active:scale-95"
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/15 hover:text-white backdrop-blur-md transition-all active:scale-95"
             title="複製邀請連結"
             id="btn-share-room"
           >
             {copiedLink ? (
               <>
                 <Check className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="text-emerald-400">已複製連結</span>
+                <span className="text-emerald-400 font-semibold">已複製連結</span>
               </>
             ) : (
               <>
-                <Share2 className="h-3.5 w-3.5 text-blue-400" />
+                <Share2 className="h-3.5 w-3.5 text-indigo-400" />
                 <span className="hidden sm:inline">邀請好友</span>
               </>
             )}
@@ -255,19 +255,19 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-800">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10">
         {/* Welcome Room Banner */}
-        <div className="my-3 flex flex-col items-center justify-center rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 p-6 text-center shadow-lg">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600/10 text-2xl border border-blue-500/20 mb-2">
+        <div className="my-3 flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 text-center shadow-xl">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/20 text-2xl border border-indigo-400/30 mb-2">
             {room.icon || '💬'}
           </div>
           <h3 className="text-base font-bold text-white mb-1">
             歡迎來到「{room.title}」
           </h3>
-          <p className="text-xs text-slate-400 max-w-md">
+          <p className="text-xs text-slate-300 max-w-md">
             {room.description}。此處的所有訊息將透過 WebSocket 即時同步給房間內的所有人。
           </p>
-          <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400">
             <span>建立者：{room.createdBy}</span>
             <span>•</span>
             <span>建立時間：{new Date(room.createdAt).toLocaleDateString('zh-TW')}</span>
@@ -275,7 +275,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
 
         {/* Message Feed */}
-        {filteredMessages.map((msg, index) => {
+        {filteredMessages.map((msg) => {
           const isSelf = msg.userId === userProfile.userId;
           const isSystem = msg.userId === 'system';
 
@@ -286,8 +286,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 className="my-2 flex justify-center"
                 id={`msg-${msg.id}`}
               >
-                <div className="flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/90 px-4 py-1 text-xs text-slate-400 shadow-sm">
-                  <Sparkles className="h-3.5 w-3.5 text-blue-400" />
+                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs text-slate-300 shadow-sm backdrop-blur-md">
+                  <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
                   <span>{msg.text}</span>
                 </div>
               </div>
@@ -306,7 +306,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               <img
                 src={msg.avatar}
                 alt={msg.username}
-                className="h-9 w-9 shrink-0 rounded-xl bg-slate-900 border border-slate-800 object-cover mt-0.5"
+                className="h-9 w-9 shrink-0 rounded-xl bg-white/10 border border-white/20 object-cover mt-0.5 shadow"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src =
                     'https://api.dicebear.com/7.x/avataaars/svg?seed=user';
@@ -321,10 +321,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               >
                 {/* User info & timestamp */}
                 <div className="flex items-center gap-2 mb-1 px-1">
-                  <span className="text-xs font-semibold text-slate-300">
+                  <span className="text-xs font-semibold text-slate-200">
                     {msg.username}
                   </span>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-slate-400">
                     {formatTime(msg.timestamp)}
                   </span>
                 </div>
@@ -332,14 +332,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 {/* Reply Ref indicator if replying */}
                 {msg.replyTo && (
                   <div
-                    className={`mb-1 flex items-center gap-1.5 rounded-lg border bg-slate-900/90 px-3 py-1.5 text-xs text-slate-400 ${
+                    className={`mb-1 flex items-center gap-1.5 rounded-xl border bg-black/20 px-3 py-1.5 text-xs text-slate-300 backdrop-blur-md ${
                       isSelf
-                        ? 'border-blue-500/30 border-r-4 border-r-blue-500'
-                        : 'border-slate-800 border-l-4 border-l-slate-600'
+                        ? 'border-indigo-400/30 border-r-4 border-r-indigo-400'
+                        : 'border-white/10 border-l-4 border-l-slate-400'
                     }`}
                   >
-                    <CornerUpLeft className="h-3 w-3 text-blue-400 shrink-0" />
-                    <span className="font-semibold text-blue-300 shrink-0">
+                    <CornerUpLeft className="h-3 w-3 text-indigo-400 shrink-0" />
+                    <span className="font-semibold text-indigo-300 shrink-0">
                       @{msg.replyTo.username}:
                     </span>
                     <span className="truncate max-w-[180px]">
@@ -350,10 +350,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
                 {/* Bubble Content */}
                 <div
-                  className={`relative rounded-2xl p-3.5 text-xs leading-relaxed shadow-sm transition-all ${
+                  className={`relative rounded-2xl p-4 text-xs leading-relaxed shadow-lg backdrop-blur-md transition-all ${
                     isSelf
-                      ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-tr-none shadow-blue-900/30'
-                      : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
+                      ? 'bg-indigo-500/20 border border-indigo-400/30 text-white rounded-tr-none'
+                      : 'bg-white/5 border border-white/10 text-slate-100 rounded-tl-none'
                   }`}
                 >
                   {/* Text Message */}
@@ -365,7 +365,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
                   {/* Image Message */}
                   {msg.type === 'image' && msg.mediaUrl && (
-                    <div className="mt-2 overflow-hidden rounded-xl border border-slate-700/50">
+                    <div className="mt-2 overflow-hidden rounded-xl border border-white/10">
                       <img
                         src={msg.mediaUrl}
                         alt="attachment"
@@ -377,14 +377,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
                   {/* Code Snippet Message */}
                   {msg.type === 'code' && (
-                    <div className="mt-2 rounded-xl border border-slate-800 bg-slate-950 p-3 font-mono text-[11px] text-emerald-400">
-                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-slate-400">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">
+                    <div className="mt-2 rounded-xl border border-white/10 bg-black/40 p-3 font-mono text-[11px] text-emerald-300">
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10 text-slate-400">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">
                           {msg.codeLang || 'CODE'}
                         </span>
                         <button
                           onClick={() => handleCopyCode(msg.text, msg.id)}
-                          className="flex items-center gap-1 rounded bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300 hover:bg-slate-700 hover:text-white"
+                          className="flex items-center gap-1 rounded-lg bg-white/10 px-2 py-0.5 text-[10px] text-slate-200 hover:bg-white/20"
                         >
                           {copiedCodeId === msg.id ? (
                             <>
@@ -407,8 +407,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
                   {/* File Attachment Message */}
                   {msg.type === 'file' && msg.mediaUrl && (
-                    <div className="mt-2 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/80 p-2.5 text-slate-200">
-                      <Paperclip className="h-5 w-5 text-blue-400 shrink-0" />
+                    <div className="mt-2 flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-2.5 text-slate-100">
+                      <Paperclip className="h-5 w-5 text-indigo-400 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-xs font-semibold">
                           {msg.fileName || '檔案附件'}
@@ -417,7 +417,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                       <a
                         href={msg.mediaUrl}
                         download={msg.fileName || 'file'}
-                        className="flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-500"
+                        className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1 text-[11px] font-semibold text-white hover:bg-indigo-500 shadow"
                       >
                         <ExternalLink className="h-3 w-3" /> 下載
                       </a>
@@ -434,14 +434,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                           <button
                             key={emoji}
                             onClick={() => onAddReaction(msg.id, emoji)}
-                            className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-all ${
+                            className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium backdrop-blur-md transition-all ${
                               hasReacted
-                                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
-                                : 'bg-slate-800/80 text-slate-300 border border-slate-700/60 hover:bg-slate-700'
+                                ? 'bg-indigo-500/30 text-indigo-200 border border-indigo-400/40'
+                                : 'bg-white/10 text-slate-300 border border-white/10 hover:bg-white/20'
                             }`}
                           >
                             <span>{emoji}</span>
-                            <span className="text-[10px]">{userIds.length}</span>
+                            <span className="text-[10px] font-semibold">{userIds.length}</span>
                           </button>
                         );
                       })}
@@ -463,7 +463,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         text: msg.text.substring(0, 50)
                       })
                     }
-                    className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                    className="flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] text-slate-300 hover:bg-white/10 hover:text-white"
                     title="回覆此訊息"
                   >
                     <CornerUpLeft className="h-3 w-3" /> 回覆
@@ -474,7 +474,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     <button
                       key={em}
                       onClick={() => onAddReaction(msg.id, em)}
-                      className="rounded p-0.5 text-xs hover:bg-slate-800 transition-transform active:scale-125"
+                      className="rounded p-0.5 text-xs hover:bg-white/10 transition-transform active:scale-125"
                     >
                       {em}
                     </button>
@@ -487,15 +487,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
         {/* Typing indicator */}
         {typingUsers.length > 0 && (
-          <div className="flex items-center gap-2 text-xs text-slate-400 italic px-2 py-1">
+          <div className="flex items-center gap-2 text-xs text-slate-300 italic px-2 py-1">
             <span className="flex gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-bounce" />
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" />
               <span
-                className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-bounce"
+                className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce"
                 style={{ animationDelay: '0.15s' }}
               />
               <span
-                className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-bounce"
+                className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce"
                 style={{ animationDelay: '0.3s' }}
               />
             </span>
@@ -508,17 +508,17 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
       {/* Reply Banner */}
       {replyTo && (
-        <div className="flex items-center justify-between border-t border-slate-800 bg-slate-900 px-4 py-2 text-xs text-slate-300">
+        <div className="flex items-center justify-between border-t border-white/10 bg-white/5 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
           <div className="flex items-center gap-2 min-w-0">
-            <CornerUpLeft className="h-4 w-4 text-blue-400 shrink-0" />
-            <span className="font-semibold text-blue-400">
+            <CornerUpLeft className="h-4 w-4 text-indigo-400 shrink-0" />
+            <span className="font-semibold text-indigo-300">
               正在回覆 @{replyTo.username}:
             </span>
-            <span className="truncate text-slate-400">{replyTo.text}</span>
+            <span className="truncate text-slate-300">{replyTo.text}</span>
           </div>
           <button
             onClick={() => setReplyTo(undefined)}
-            className="text-slate-500 hover:text-slate-300"
+            className="text-slate-400 hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
@@ -527,7 +527,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
       {/* Attachment / Code mode indicator banner */}
       {mediaUrl && (
-        <div className="flex items-center justify-between border-t border-slate-800 bg-slate-900 px-4 py-2 text-xs text-slate-300">
+        <div className="flex items-center justify-between border-t border-white/10 bg-white/5 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
           <div className="flex items-center gap-2">
             <Paperclip className="h-4 w-4 text-emerald-400" />
             <span>已附加檔案：{fileName || '預覽附件'}</span>
@@ -538,7 +538,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               setFileName('');
               setMsgType('text');
             }}
-            className="text-slate-500 hover:text-slate-300"
+            className="text-slate-400 hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
@@ -546,11 +546,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       )}
 
       {/* Input Form Bar */}
-      <div className="border-t border-slate-800 bg-slate-900/90 p-3 backdrop-blur-md">
+      <div className="border-t border-white/10 bg-white/5 p-3 backdrop-blur-xl">
         {/* Quick Popovers */}
         <div className="relative">
           {showEmojiPicker && (
-            <div className="absolute bottom-full mb-2 left-0 z-30 flex flex-wrap gap-2 rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-2xl animate-fade-in">
+            <div className="absolute bottom-full mb-2 left-0 z-30 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-slate-900/90 backdrop-blur-xl p-3 shadow-2xl animate-fade-in">
               {EMOJI_LIST.map((em) => (
                 <button
                   key={em}
@@ -559,7 +559,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     setInputText((prev) => prev + em);
                     setShowEmojiPicker(false);
                   }}
-                  className="text-xl p-1.5 hover:bg-slate-800 rounded-xl transition-transform active:scale-125"
+                  className="text-xl p-1.5 hover:bg-white/10 rounded-xl transition-transform active:scale-125"
                 >
                   {em}
                 </button>
@@ -568,7 +568,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           )}
 
           {showQuickTemplates && (
-            <div className="absolute bottom-full mb-2 left-0 z-30 flex flex-col gap-1 w-72 rounded-2xl border border-slate-800 bg-slate-900 p-2 shadow-2xl animate-fade-in">
+            <div className="absolute bottom-full mb-2 left-0 z-30 flex flex-col gap-1 w-72 rounded-2xl border border-white/10 bg-slate-900/90 backdrop-blur-xl p-2 shadow-2xl animate-fade-in">
               <div className="text-[10px] font-bold text-slate-400 px-2 py-1">
                 快捷回覆模板
               </div>
@@ -580,7 +580,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     setInputText(tmpl);
                     setShowQuickTemplates(false);
                   }}
-                  className="rounded-lg p-2 text-left text-xs text-slate-200 hover:bg-slate-800 hover:text-white transition-all"
+                  className="rounded-xl p-2 text-left text-xs text-slate-200 hover:bg-white/10 hover:text-white transition-all"
                 >
                   {tmpl}
                 </button>
@@ -592,7 +592,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         <form onSubmit={handleSend} className="flex flex-col gap-2">
           {/* Top Tools Row */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               {/* Emoji popover button */}
               <button
                 type="button"
@@ -600,10 +600,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   setShowEmojiPicker(!showEmojiPicker);
                   setShowQuickTemplates(false);
                 }}
-                className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-all ${
+                className={`flex h-8 w-8 items-center justify-center rounded-xl border backdrop-blur-md transition-all ${
                   showEmojiPicker
-                    ? 'border-blue-500 bg-blue-500/20 text-blue-400'
-                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
+                    ? 'border-indigo-400 bg-indigo-500/20 text-indigo-300'
+                    : 'border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
                 }`}
                 title="插入 Emoji 表情"
               >
@@ -617,10 +617,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   setShowQuickTemplates(!showQuickTemplates);
                   setShowEmojiPicker(false);
                 }}
-                className="flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-950 px-2 py-1 text-xs text-slate-400 hover:text-white transition-all"
+                className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-300 hover:text-white hover:bg-white/10 backdrop-blur-md transition-all"
                 title="選擇快捷對話範本"
               >
-                <Sparkles className="h-3.5 w-3.5 text-blue-400" />
+                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
                 <span className="hidden sm:inline">常用詞語</span>
               </button>
 
@@ -634,10 +634,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     setMsgType('code');
                   }
                 }}
-                className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs transition-all ${
+                className={`flex items-center gap-1 rounded-xl border px-2.5 py-1 text-xs backdrop-blur-md transition-all ${
                   msgType === 'code'
-                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
-                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
+                    ? 'border-emerald-400/40 bg-emerald-500/20 text-emerald-300'
+                    : 'border-white/10 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10'
                 }`}
                 title="切換程式碼發送模式"
               >
@@ -647,7 +647,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
               {/* File / Image Upload */}
               <label
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-950 text-slate-400 hover:text-white cursor-pointer transition-all"
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 backdrop-blur-md cursor-pointer transition-all"
                 title="傳送圖片或檔案"
               >
                 <ImageIcon className="h-4 w-4" />
@@ -664,13 +664,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               <select
                 value={codeLang}
                 onChange={(e) => setCodeLang(e.target.value)}
-                className="rounded-lg border border-slate-800 bg-slate-950 px-2 py-1 text-[11px] text-slate-300 focus:outline-none"
+                className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-200 focus:outline-none backdrop-blur-md"
               >
-                <option value="javascript">JavaScript / TS</option>
-                <option value="html">HTML / CSS</option>
-                <option value="python">Python</option>
-                <option value="json">JSON</option>
-                <option value="sql">SQL</option>
+                <option value="javascript" className="bg-slate-900">JavaScript / TS</option>
+                <option value="html" className="bg-slate-900">HTML / CSS</option>
+                <option value="python" className="bg-slate-900">Python</option>
+                <option value="json" className="bg-slate-900">JSON</option>
+                <option value="sql" className="bg-slate-900">SQL</option>
               </select>
             )}
           </div>
@@ -687,13 +687,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   : `傳送訊息至「${room.title}」... (Enter 發送，Shift+Enter 換行)`
               }
               rows={msgType === 'code' ? 3 : 2}
-              className="flex-1 rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-sans"
+              className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-white placeholder-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400/50 backdrop-blur-md resize-none font-sans"
             />
 
             <button
               type="submit"
               disabled={!inputText.trim() && !mediaUrl}
-              className="flex h-10 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shrink-0"
+              className="flex h-11 w-12 items-center justify-center rounded-2xl bg-indigo-600 hover:bg-indigo-500 border border-indigo-400/30 text-white shadow-lg shadow-indigo-600/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shrink-0"
               id="btn-send-message"
               title="發送訊息"
             >

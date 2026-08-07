@@ -1,0 +1,29 @@
+name: CI Quality Check
+
+on:
+  push:
+    branches-ignore: ["main", "master"]
+  pull_request:
+    branches: ["*"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Check TypeScript Types
+        run: npm run lint
+
+      - name: Build static pages
+        run: npx vite build

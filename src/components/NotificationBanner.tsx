@@ -19,10 +19,10 @@ export const NotificationBanner: React.FC<NotificationBannerProps> = ({
   if (!showNotificationPrompt && !isInstallable) return null;
 
   return (
-    <div className="relative border-b border-blue-500/20 bg-gradient-to-r from-blue-950/90 via-indigo-950/80 to-slate-900 px-4 py-2 text-xs text-slate-200">
+    <div className="relative border-b border-white/10 bg-white/5 backdrop-blur-xl px-4 py-2 text-xs text-slate-200">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <Sparkles className="h-4 w-4 text-blue-400 shrink-0 animate-spin-slow" />
+          <Sparkles className="h-4 w-4 text-indigo-400 shrink-0" />
           <p className="truncate">
             {showNotificationPrompt ? (
               <span>
@@ -40,7 +40,7 @@ export const NotificationBanner: React.FC<NotificationBannerProps> = ({
           {showNotificationPrompt && (
             <button
               onClick={onRequestNotification}
-              className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1 font-semibold text-white hover:bg-blue-500 transition-all shadow-sm shadow-blue-500/20 active:scale-95"
+              className="flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-1 font-semibold text-white hover:bg-indigo-500 transition-all shadow-md active:scale-95"
             >
               <Bell className="h-3.5 w-3.5" />
               <span>開啟通知</span>
@@ -50,7 +50,7 @@ export const NotificationBanner: React.FC<NotificationBannerProps> = ({
           {isInstallable && (
             <button
               onClick={onInstallPWA}
-              className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1 font-semibold text-white hover:bg-indigo-500 transition-all shadow-sm shadow-indigo-500/20 active:scale-95"
+              className="flex items-center gap-1 rounded-xl bg-purple-600 px-3 py-1 font-semibold text-white hover:bg-purple-500 transition-all shadow-md active:scale-95"
             >
               <Download className="h-3.5 w-3.5" />
               <span>安裝 App</span>

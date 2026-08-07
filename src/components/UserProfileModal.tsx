@@ -45,17 +45,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-fade-in">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-2xl shadow-2xl shadow-indigo-950/50">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-5 py-4">
           <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-blue-400" />
+            <User className="h-5 w-5 text-indigo-400" />
             <h2 className="text-base font-bold text-white">設定個人暱稱與頭像</h2>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="rounded-xl p-1 text-slate-400 hover:bg-white/10 hover:text-white"
             id="btn-close-profile-modal"
           >
             <X className="h-5 w-5" />
@@ -70,12 +70,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <img
                 src={avatar}
                 alt="User Avatar"
-                className="h-20 w-20 rounded-2xl bg-slate-950 p-1 border-2 border-blue-500/50 shadow-lg"
+                className="h-20 w-20 rounded-2xl bg-white/5 p-1 border-2 border-indigo-400/50 shadow-xl"
               />
               <button
                 type="button"
                 onClick={handleRandomizeAvatar}
-                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow hover:bg-blue-500 transition-all active:scale-95"
+                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-500 transition-all active:scale-95"
                 title="隨機生成造型"
                 id="btn-random-avatar"
               >
@@ -93,10 +93,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     key={seed}
                     type="button"
                     onClick={() => handleSelectPresetAvatar(seed)}
-                    className={`h-9 w-9 overflow-hidden rounded-lg border bg-slate-950 p-0.5 transition-all ${
+                    className={`h-9 w-9 overflow-hidden rounded-xl border bg-black/20 p-0.5 transition-all ${
                       isSelected
-                        ? 'border-blue-500 ring-2 ring-blue-500/30'
-                        : 'border-slate-800 hover:border-slate-600 opacity-70 hover:opacity-100'
+                        ? 'border-indigo-400 ring-2 ring-indigo-400/40 opacity-100 scale-105'
+                        : 'border-white/10 hover:border-white/30 opacity-70 hover:opacity-100'
                     }`}
                   >
                     <img src={url} alt={seed} className="h-full w-full object-cover" />
@@ -115,7 +115,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400/50 backdrop-blur-md"
               placeholder="請輸入您的聊天暱稱"
               maxLength={25}
               required
@@ -123,11 +123,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </div>
 
           {/* Sound & Notification Toggles */}
-          <div className="space-y-2 border-t border-slate-800 pt-3">
-            <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/50 p-3 cursor-pointer">
+          <div className="space-y-2 border-t border-white/10 pt-3">
+            <label className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3 cursor-pointer hover:bg-white/10 transition-all">
               <div className="flex items-center gap-2.5">
                 {soundEnabled ? (
-                  <Volume2 className="h-4 w-4 text-blue-400" />
+                  <Volume2 className="h-4 w-4 text-indigo-400" />
                 ) : (
                   <VolumeX className="h-4 w-4 text-slate-500" />
                 )}
@@ -140,13 +140,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 type="checkbox"
                 checked={soundEnabled}
                 onChange={(e) => setSoundEnabled(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-white/20 bg-white/10 text-indigo-600 focus:ring-indigo-500"
               />
             </label>
 
-            <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/50 p-3 cursor-pointer">
+            <label className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3 cursor-pointer hover:bg-white/10 transition-all">
               <div className="flex items-center gap-2.5">
-                <Bell className="h-4 w-4 text-blue-400" />
+                <Bell className="h-4 w-4 text-indigo-400" />
                 <div>
                   <div className="text-xs font-semibold text-slate-200">瀏覽器推播通知</div>
                   <div className="text-[11px] text-slate-400">當分頁隱藏時接收新訊息面板通知</div>
@@ -156,7 +156,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 type="checkbox"
                 checked={notificationsEnabled}
                 onChange={(e) => setNotificationsEnabled(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-white/20 bg-white/10 text-indigo-600 focus:ring-indigo-500"
               />
             </label>
           </div>
@@ -166,13 +166,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white"
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-slate-300 hover:bg-white/10 hover:text-white"
             >
               取消
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white hover:bg-blue-500 shadow-md shadow-blue-600/30 active:scale-95"
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 active:scale-95"
               id="btn-save-profile"
             >
               <Check className="h-4 w-4" />

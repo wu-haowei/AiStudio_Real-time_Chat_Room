@@ -60,12 +60,12 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-blue-950/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-fade-in">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-2xl shadow-2xl shadow-indigo-950/50">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
               <Plus className="h-5 w-5" />
             </div>
             <div>
@@ -75,7 +75,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="rounded-xl p-1 text-slate-400 hover:bg-white/10 hover:text-white"
             id="btn-close-create-modal"
           >
             <X className="h-5 w-5" />
@@ -85,7 +85,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-400">
+            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
               {error}
             </div>
           )}
@@ -103,8 +103,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   onClick={() => setIcon(ic)}
                   className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg transition-all ${
                     icon === ic
-                      ? 'bg-blue-600 text-white scale-105 ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-900'
-                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      ? 'bg-indigo-600 text-white scale-105 ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-900 shadow-lg'
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5'
                   }`}
                 >
                   {ic}
@@ -126,7 +126,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 setTitle(e.target.value);
                 if (error) setError('');
               }}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400/50 backdrop-blur-md"
               maxLength={30}
               required
             />
@@ -143,10 +143,10 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   type="button"
                   key={cat}
                   onClick={() => setCategory(cat)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
                     category === cat
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200 border border-white/5'
                   }`}
                 >
                   {cat}
@@ -165,13 +165,13 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white placeholder-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400/50 backdrop-blur-md resize-none"
               maxLength={120}
             />
           </div>
 
           {/* Private Room Option */}
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-amber-400" />
@@ -184,18 +184,18 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 type="checkbox"
                 checked={isPrivate}
                 onChange={(e) => setIsPrivate(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-white/20 bg-white/10 text-indigo-600 focus:ring-indigo-500"
               />
             </div>
 
             {isPrivate && (
-              <div className="mt-3 pt-2 border-t border-slate-800">
+              <div className="mt-3 pt-2 border-t border-white/10">
                 <input
                   type="password"
                   placeholder="請設定房間密碼"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white focus:border-indigo-400 focus:outline-none"
                 />
               </div>
             )}
@@ -206,17 +206,17 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white"
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-slate-300 hover:bg-white/10 hover:text-white"
             >
               取消
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2 text-xs font-bold text-white hover:from-blue-500 hover:to-indigo-500 shadow-md shadow-blue-600/30 active:scale-95"
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 active:scale-95"
               id="btn-submit-create-room"
             >
               <Sparkles className="h-4 w-4" />
-              <span>立即建立房間</span>
+              <span>儲存並建立房間</span>
             </button>
           </div>
         </form>

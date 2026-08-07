@@ -404,7 +404,12 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-950 font-sans text-slate-100 antialiased selection:bg-blue-600 selection:text-white">
+    <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-[#0f172a] font-sans text-slate-100 antialiased selection:bg-indigo-600 selection:text-white">
+      {/* Decorative Mesh Gradients for Frosted Glass backdrop */}
+      <div className="pointer-events-none absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/20 blur-[120px] rounded-full z-0" />
+      <div className="pointer-events-none absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-600/20 blur-[120px] rounded-full z-0" />
+      <div className="pointer-events-none absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-emerald-500/10 blur-[100px] rounded-full z-0" />
+
       {/* Header */}
       <Header
         status={status}

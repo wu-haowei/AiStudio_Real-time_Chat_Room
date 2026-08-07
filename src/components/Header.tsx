@@ -38,12 +38,12 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSound
 }) => {
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-800 bg-slate-900/90 px-4 backdrop-blur-md transition-all">
+    <header className="relative z-30 flex h-16 w-full items-center justify-between border-b border-white/10 bg-white/5 px-4 backdrop-blur-xl transition-all">
       {/* Left: Mobile Menu & Logo */}
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-800 bg-slate-800/60 text-slate-300 hover:bg-slate-700 hover:text-white md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:bg-white/15 hover:text-white md:hidden transition-all"
           title="開啟房間選單"
           id="btn-toggle-sidebar"
         >
@@ -51,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 shadow-md shadow-blue-500/20">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-lg shadow-indigo-500/20 text-white font-bold">
             <MessageSquare className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -59,8 +59,8 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-base font-bold text-white tracking-wide">
                 即時房間聊天室
               </h1>
-              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400 border border-blue-500/20">
-                <Sparkles className="h-3 w-3" /> PWA 支援
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-indigo-300 border border-white/10 backdrop-blur-md">
+                <Sparkles className="h-3 w-3 text-indigo-400" /> PWA 支援
               </span>
             </div>
             <p className="text-xs text-slate-400 hidden sm:block">
@@ -74,12 +74,12 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="hidden lg:flex items-center gap-3">
         {/* Connection status indicator */}
         <div
-          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border ${
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium border backdrop-blur-md ${
             status === 'connected'
-              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
               : status === 'connecting' || status === 'reconnecting'
-              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
-              : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+              ? 'bg-amber-500/10 text-amber-300 border-amber-500/20 animate-pulse'
+              : 'bg-rose-500/10 text-rose-300 border-rose-500/20'
           }`}
         >
           {status === 'connected' ? (
@@ -98,8 +98,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Online count */}
-        <div className="flex items-center gap-1.5 rounded-full bg-slate-800/80 px-3 py-1 text-xs text-slate-300 border border-slate-700/60">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+        <div className="flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300 border border-white/10 backdrop-blur-md">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
           <span>線上人數：{onlineCount} 人</span>
         </div>
       </div>
@@ -109,16 +109,16 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Sound toggle */}
         <button
           onClick={onToggleSound}
-          className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-all ${
+          className={`flex h-9 w-9 items-center justify-center rounded-xl border backdrop-blur-md transition-all ${
             userProfile.soundEnabled
-              ? 'border-slate-700/60 bg-slate-800/60 text-slate-300 hover:text-white hover:bg-slate-700'
-              : 'border-slate-800 bg-slate-900 text-slate-500 hover:text-slate-400'
+              ? 'border-white/10 bg-white/10 text-indigo-300 hover:text-white hover:bg-white/20'
+              : 'border-white/5 bg-white/5 text-slate-500 hover:text-slate-400'
           }`}
           title={userProfile.soundEnabled ? '音效已開啟' : '音效已靜音'}
           id="btn-toggle-sound"
         >
           {userProfile.soundEnabled ? (
-            <Volume2 className="h-4 w-4 text-blue-400" />
+            <Volume2 className="h-4 w-4 text-indigo-300" />
           ) : (
             <VolumeX className="h-4 w-4 text-slate-500" />
           )}
@@ -127,10 +127,10 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Notification permissions toggle */}
         <button
           onClick={onRequestNotification}
-          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-all ${
+          className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium border backdrop-blur-md transition-all ${
             userProfile.notificationsEnabled
-              ? 'border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
-              : 'border-slate-700/60 bg-slate-800/60 text-slate-300 hover:bg-slate-700 hover:text-white'
+              ? 'border-indigo-400/30 bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30'
+              : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
           }`}
           title={
             userProfile.notificationsEnabled
@@ -141,7 +141,7 @@ export const Header: React.FC<HeaderProps> = ({
         >
           {userProfile.notificationsEnabled ? (
             <>
-              <Bell className="h-4 w-4 text-blue-400" />
+              <Bell className="h-4 w-4 text-indigo-300" />
               <span className="hidden sm:inline">通知開啟</span>
             </>
           ) : (
@@ -156,7 +156,7 @@ export const Header: React.FC<HeaderProps> = ({
         {isInstallable && (
           <button
             onClick={onInstallPWA}
-            className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/20 hover:from-blue-500 hover:to-indigo-500 transition-all active:scale-95"
+            className="flex items-center gap-1.5 rounded-xl bg-indigo-600/80 hover:bg-indigo-500 border border-indigo-400/30 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 transition-all active:scale-95"
             id="btn-install-pwa"
           >
             <Download className="h-4 w-4 animate-bounce" />
@@ -167,20 +167,20 @@ export const Header: React.FC<HeaderProps> = ({
         {/* User Profile Avatar / Trigger */}
         <button
           onClick={onOpenProfile}
-          className="flex items-center gap-2 rounded-xl border border-slate-700/80 bg-slate-800/80 p-1 pr-2.5 hover:bg-slate-700/80 transition-all active:scale-95"
+          className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-1 pr-3 hover:bg-white/15 backdrop-blur-md transition-all active:scale-95"
           title="修改個人名稱與頭像"
           id="btn-user-profile"
         >
           <img
             src={userProfile.avatar}
             alt={userProfile.username}
-            className="h-8 w-8 rounded-lg bg-slate-900 object-cover border border-slate-700"
+            className="h-8 w-8 rounded-lg bg-white/10 object-cover border border-white/20"
             onError={(e) => {
               (e.target as HTMLImageElement).src =
                 'https://api.dicebear.com/7.x/bottts/svg?seed=user';
             }}
           />
-          <span className="text-xs font-medium text-slate-200 max-w-[90px] truncate hidden sm:inline-block">
+          <span className="text-xs font-semibold text-slate-100 max-w-[90px] truncate hidden sm:inline-block">
             {userProfile.username}
           </span>
         </button>
