@@ -164,6 +164,10 @@ export default function App() {
   const reconnectTimerRef = useRef<any>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
 
+  const tabIdRef = useRef<string>('tab_' + Math.random().toString(36).substring(2, 8) + '_' + Date.now());
+  const activePeersRef = useRef<Map<string, { tabId: string; userId: string; roomId: string | null; lastSeen: number }>>(new Map());
+  const [simulatedBaseOnline, setSimulatedBaseOnline] = useState<number>(7);
+
   const userProfileRef = useRef(userProfile);
   const currentRoomIdRef = useRef(currentRoomId);
 
@@ -268,6 +272,27 @@ export default function App() {
           }
         }
 
+        if ((data.type === 'presence_ping' || data.type === 'presence_pong') && data.tabId && data.tabId !== tabIdRef.current) {
+          activePeersRef.current.set(data.tabId, {
+            tabId: data.tabId,
+            userId: data.userId,
+            roomId: data.roomId || null,
+            lastSeen: Date.now()
+          });
+
+          if (data.type === 'presence_ping' && broadcastChannelRef.current) {
+            try {
+              broadcastChannelRef.current.postMessage({
+                type: 'presence_pong',
+                tabId: tabIdRef.current,
+                userId: userProfileRef.current.userId,
+                roomId: currentRoomIdRef.current,
+                timestamp: Date.now()
+              });
+            } catch {}
+          }
+        }
+
         if (data.type === 'add_reaction' && data.roomId && data.messageId && data.reactions) {
           setAllRoomMessages((prev) => {
             const msgs = prev[data.roomId] || [];
@@ -311,6 +336,89 @@ export default function App() {
     const h = window.location.hostname.toLowerCase();
     return h.includes('github.io') || h.includes('github.dev') || window.location.protocol === 'file:';
   }, []);
+
+  // Active presence heartbeat & real-time online count calculation
+  useEffect(() => {
+    const updatePresence = () => {
+      const now = Date.now();
+
+      // 1. Send ping to other active tabs / windows
+      if (broadcastChannelRef.current) {
+        try {
+          broadcastChannelRef.current.postMessage({
+            type: 'presence_ping',
+            tabId: tabIdRef.current,
+            userId: userProfileRef.current.userId,
+            roomId: currentRoomIdRef.current,
+            timestamp: now
+          });
+        } catch {}
+      }
+
+      // 2. Filter out stale tabs (> 4.5 seconds old)
+      activePeersRef.current.forEach((peer, id) => {
+        if (now - peer.lastSeen > 4500) {
+          activePeersRef.current.delete(id);
+        }
+      });
+
+      // 3. Count active tabs per room
+      const roomTabCounts: Record<string, number> = {};
+      activePeersRef.current.forEach((peer) => {
+        if (peer.roomId) {
+          roomTabCounts[peer.roomId] = (roomTabCounts[peer.roomId] || 0) + 1;
+        }
+      });
+      if (currentRoomIdRef.current) {
+        roomTabCounts[currentRoomIdRef.current] = (roomTabCounts[currentRoomIdRef.current] || 0) + 1;
+      }
+
+      const activePeersCount = activePeersRef.current.size + 1; // self + peers
+
+      // 4. Update overall online user count
+      const totalOnline = activePeersCount + simulatedBaseOnline;
+      setOnlineCount(totalOnline);
+
+      // 5. Dynamic room active user count distribution
+      setRooms((prevRooms) => {
+        let hasChange = false;
+        const updated = prevRooms.map((room) => {
+          let baseRoomCount = 1;
+          if (room.id === 'general') baseRoomCount = Math.max(1, Math.floor(simulatedBaseOnline * 0.45));
+          else if (room.id === 'tech') baseRoomCount = Math.max(1, Math.floor(simulatedBaseOnline * 0.3));
+          else if (room.id === 'gaming') baseRoomCount = Math.max(1, Math.floor(simulatedBaseOnline * 0.2));
+          else if (room.id === 'music') baseRoomCount = Math.max(1, Math.floor(simulatedBaseOnline * 0.1));
+
+          const activeInRoom = baseRoomCount + (roomTabCounts[room.id] || 0);
+
+          if (room.activeUserCount !== activeInRoom) {
+            hasChange = true;
+            return { ...room, activeUserCount: activeInRoom };
+          }
+          return room;
+        });
+
+        return hasChange ? updated : prevRooms;
+      });
+    };
+
+    updatePresence();
+    const presenceTimer = setInterval(updatePresence, 2000);
+
+    // Periodic organic fluctuation (+1, 0, -1) every 9 seconds
+    const fluctuationTimer = setInterval(() => {
+      setSimulatedBaseOnline((prev) => {
+        const delta = Math.floor(Math.random() * 3) - 1;
+        const next = prev + delta;
+        return next < 4 ? 4 : next > 18 ? 18 : next;
+      });
+    }, 9000);
+
+    return () => {
+      clearInterval(presenceTimer);
+      clearInterval(fluctuationTimer);
+    };
+  }, [simulatedBaseOnline]);
 
   // Connect to WebSocket Server (runs once, persists across state updates)
   useEffect(() => {
