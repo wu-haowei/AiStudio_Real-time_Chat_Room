@@ -19,6 +19,7 @@ interface HeaderProps {
   onlineCount: number;
   userProfile: UserProfile;
   isInstallable: boolean;
+  isStaticHost?: boolean;
   onInstallPWA: () => void;
   onRequestNotification: () => void;
   onOpenProfile: () => void;
@@ -31,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
   onlineCount,
   userProfile,
   isInstallable,
+  isStaticHost,
   onInstallPWA,
   onRequestNotification,
   onOpenProfile,
@@ -85,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({
           {status === 'connected' ? (
             <>
               <Wifi className="h-3.5 w-3.5 text-emerald-400" />
-              <span>已連線伺服器</span>
+              <span>{isStaticHost ? '廣播同步模式 (GitHub Pages)' : '已連線伺服器'}</span>
             </>
           ) : (
             <>

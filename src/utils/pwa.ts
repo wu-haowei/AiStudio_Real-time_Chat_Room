@@ -3,12 +3,14 @@ let deferredPrompt: any = null;
 export function registerServiceWorker() {
   if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then(
+      // Use relative path for GitHub Pages or custom base path support
+      const swUrl = new URL('sw.js', window.location.href).href;
+      navigator.serviceWorker.register(swUrl).then(
         (reg) => {
           console.log('[PWA] ServiceWorker registered with scope:', reg.scope);
         },
         (err) => {
-          console.warn('[PWA] ServiceWorker registration failed:', err);
+          console.warn('[PWA] ServiceWorker registration notice:', err?.message || err);
         }
       );
     });

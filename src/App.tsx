@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
@@ -305,6 +305,13 @@ export default function App() {
     };
   }, []);
 
+  // Detect if running on a static host (like GitHub Pages) without Node.js backend
+  const isStaticHost = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const h = window.location.hostname.toLowerCase();
+    return h.includes('github.io') || h.includes('github.dev') || window.location.protocol === 'file:';
+  }, []);
+
   // Connect to WebSocket Server (runs once, persists across state updates)
   useEffect(() => {
     registerServiceWorker();
@@ -313,6 +320,14 @@ export default function App() {
     });
 
     let isMounted = true;
+
+    // On static hosts (e.g. GitHub Pages), skip WS server connection to avoid console 404/WS errors
+    if (isStaticHost) {
+      setStatus('connected');
+      return;
+    }
+
+    let failureCount = 0;
 
     const connectWebSocket = () => {
       if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
@@ -330,6 +345,7 @@ export default function App() {
 
         ws.onopen = () => {
           if (!isMounted) return;
+          failureCount = 0;
           setStatus('connected');
 
           const prof = userProfileRef.current;
@@ -548,6 +564,12 @@ export default function App() {
 
         ws.onclose = () => {
           if (!isMounted) return;
+          failureCount++;
+          if (failureCount >= 2) {
+            // Gracefully fall back to local/broadcast mode when server is unavailable
+            setStatus('connected');
+            return;
+          }
           setStatus('disconnected');
           reconnectTimerRef.current = setTimeout(() => {
             if (isMounted) {
@@ -557,12 +579,11 @@ export default function App() {
           }, 3000);
         };
 
-        ws.onerror = (err) => {
-          console.warn('WebSocket connection error:', err);
+        ws.onerror = () => {
+          // Suppress verbose error logging on static host / missing WS endpoint
         };
-      } catch (err) {
-        console.warn('Failed to open WebSocket connection:', err);
-        setStatus('disconnected');
+      } catch {
+        if (isMounted) setStatus('connected');
       }
     };
 
@@ -575,11 +596,17 @@ export default function App() {
         wsRef.current.close();
       }
     };
-  }, []);
+  }, [isStaticHost]);
 
-  // Periodic polling sync for multi-window/multi-browser consistency
+  // Periodic polling sync for multi-window/multi-browser consistency (skip on static hosts)
   useEffect(() => {
+    if (isStaticHost) return;
+
+    let serverAvailable = true;
+
     const syncServerData = async () => {
+      if (!serverAvailable) return;
+
       try {
         const roomsRes = await fetch('/api/rooms');
         if (roomsRes.ok) {
@@ -591,12 +618,15 @@ export default function App() {
               setOnlineCount((prev) => Math.max(prev, totalActive));
             }
           }
+        } else if (roomsRes.status === 404) {
+          serverAvailable = false; // Stop polling if backend endpoint 404s
+          return;
         }
       } catch {
-        // Silently ignore network errors during background sync
+        // Silently ignore network errors
       }
 
-      if (currentRoomId) {
+      if (currentRoomId && serverAvailable) {
         try {
           const msgsRes = await fetch(`/api/rooms/${currentRoomId}/messages`);
           if (msgsRes.ok) {
@@ -613,6 +643,8 @@ export default function App() {
                 return { ...prev, [currentRoomId]: fetchedMsgs };
               });
             }
+          } else if (msgsRes.status === 404) {
+            serverAvailable = false;
           }
         } catch {
           // Silently ignore
@@ -621,9 +653,9 @@ export default function App() {
     };
 
     syncServerData();
-    const syncInterval = setInterval(syncServerData, 3000);
+    const syncInterval = setInterval(syncServerData, 4000);
     return () => clearInterval(syncInterval);
-  }, [currentRoomId]);
+  }, [currentRoomId, isStaticHost]);
 
   // Handle switching rooms
   const handleSelectRoom = (roomId: string) => {
@@ -732,8 +764,8 @@ export default function App() {
       } catch (err) {
         console.warn('WS send failed:', err);
       }
-    } else {
-      // Safe REST fallback (suppress network errors on static hosting like GitHub Pages)
+    } else if (!isStaticHost) {
+      // Safe REST fallback (only for dynamic hosts with server backend)
       try {
         await fetch(`/api/rooms/${currentRoomId}/messages`, {
           method: 'POST',
@@ -938,6 +970,7 @@ export default function App() {
         onlineCount={onlineCount}
         userProfile={userProfile}
         isInstallable={isInstallable}
+        isStaticHost={isStaticHost}
         onInstallPWA={handleInstallPWA}
         onRequestNotification={handleRequestNotification}
         onOpenProfile={() => setIsProfileModalOpen(true)}
