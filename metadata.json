@@ -1,0 +1,6 @@
+{
+  "name": "即時房間聊天室",
+  "description": "支援建立聊天房間、即時 WebSocket 訊息傳送、瀏覽器通知與 PWA 離線安裝功能的網頁聊天應用。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
