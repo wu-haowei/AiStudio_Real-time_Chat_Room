@@ -5,6 +5,7 @@ import { ChatArea } from './components/ChatArea';
 import { CreateRoomModal } from './components/CreateRoomModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { NotificationBanner } from './components/NotificationBanner';
+import { P2PManager } from './utils/p2p';
 import {
   Room,
   Message,
@@ -163,6 +164,7 @@ export default function App() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<any>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  const p2pRef = useRef<P2PManager | null>(null);
 
   const tabIdRef = useRef<string>('tab_' + Math.random().toString(36).substring(2, 8) + '_' + Date.now());
   const activePeersRef = useRef<Map<string, { tabId: string; userId: string; roomId: string | null; lastSeen: number }>>(new Map());
@@ -336,6 +338,91 @@ export default function App() {
     const h = window.location.hostname.toLowerCase();
     return h.includes('github.io') || h.includes('github.dev') || window.location.protocol === 'file:';
   }, []);
+
+  // WebRTC P2P Manager for cross-device & cross-browser real-time sync on static hosts
+  useEffect(() => {
+    const p2p = new P2PManager({
+      onMessage: (message) => {
+        setAllRoomMessages((prev) => {
+          const list = prev[message.roomId] || [];
+          if (list.some((m) => m.id === message.id)) return prev;
+          const updated = [...list, message];
+          const next = { ...prev, [message.roomId]: updated };
+          try { localStorage.setItem(LOCAL_STORAGE_MSGS_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
+
+        setRooms((prev) => {
+          const next = prev.map((r) => {
+            if (r.id === message.roomId) {
+              return {
+                ...r,
+                lastMessage:
+                  message.type === 'image'
+                    ? '[📷 圖片]'
+                    : message.type === 'code'
+                    ? '[💻 程式碼]'
+                    : message.type === 'file'
+                    ? `[📎 檔案] ${message.fileName || ''}`
+                    : message.text,
+                lastMessageTime: message.timestamp
+              };
+            }
+            return r;
+          });
+          try { localStorage.setItem(LOCAL_STORAGE_ROOMS_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
+
+        if (message.roomId === currentRoomIdRef.current && message.userId !== userProfileRef.current.userId) {
+          if (userProfileRef.current.soundEnabled) playMessageSound();
+        }
+      },
+      onReaction: (roomId, messageId, reactions) => {
+        setAllRoomMessages((prev) => {
+          const msgs = prev[roomId] || [];
+          const updated = msgs.map((m) => (m.id === messageId ? { ...m, reactions } : m));
+          const next = { ...prev, [roomId]: updated };
+          try { localStorage.setItem(LOCAL_STORAGE_MSGS_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
+      },
+      onCreateRoom: (room, welcomeMsg) => {
+        setRooms((prev) => {
+          if (prev.some((r) => r.id === room.id)) return prev;
+          const next = [room, ...prev];
+          try { localStorage.setItem(LOCAL_STORAGE_ROOMS_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
+        if (welcomeMsg) {
+          setAllRoomMessages((prev) => {
+            if (prev[room.id]) return prev;
+            const next = { ...prev, [room.id]: [welcomeMsg] };
+            try { localStorage.setItem(LOCAL_STORAGE_MSGS_KEY, JSON.stringify(next)); } catch {}
+            return next;
+          });
+        }
+      },
+      onPeerCountChange: (count) => {
+        if (count > 1) {
+          setOnlineCount((prev) => Math.max(prev, count + 6));
+        }
+      }
+    });
+
+    p2pRef.current = p2p;
+
+    return () => {
+      p2p.leaveRoom();
+    };
+  }, []);
+
+  // Sync P2P room subscription
+  useEffect(() => {
+    if (currentRoomId && p2pRef.current) {
+      p2pRef.current.joinRoom(currentRoomId, userProfile.userId);
+    }
+  }, [currentRoomId, userProfile.userId]);
 
   // Active presence heartbeat & real-time online count calculation
   useEffect(() => {
@@ -843,7 +930,7 @@ export default function App() {
       return next;
     });
 
-    // 2. Broadcast via BroadcastChannel (for multi-tab / GitHub Pages sync)
+    // 2. Broadcast via BroadcastChannel & P2P WebRTC mesh (for cross-browser sync on GitHub Pages)
     if (broadcastChannelRef.current) {
       try {
         broadcastChannelRef.current.postMessage({
@@ -851,6 +938,12 @@ export default function App() {
           roomId: currentRoomId,
           message: newMsg
         });
+      } catch {}
+    }
+
+    if (p2pRef.current) {
+      try {
+        p2pRef.current.sendMessage(newMsg);
       } catch {}
     }
 
@@ -953,6 +1046,12 @@ export default function App() {
       } catch {}
     }
 
+    if (p2pRef.current) {
+      try {
+        p2pRef.current.sendReaction(currentRoomId, messageId, nextReactions);
+      } catch {}
+    }
+
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
         wsRef.current.send(
@@ -1021,7 +1120,7 @@ export default function App() {
     setIsCreateModalOpen(false);
     setIsSidebarOpen(false);
 
-    // 3. Broadcast via BroadcastChannel
+    // 3. Broadcast via BroadcastChannel & P2P WebRTC
     if (broadcastChannelRef.current) {
       try {
         broadcastChannelRef.current.postMessage({
@@ -1029,6 +1128,12 @@ export default function App() {
           room: newRoom,
           welcomeMsg
         });
+      } catch {}
+    }
+
+    if (p2pRef.current) {
+      try {
+        p2pRef.current.broadcastRoom(newRoom, welcomeMsg);
       } catch {}
     }
 
