@@ -3,6 +3,7 @@ import {
   Send,
   Smile,
   Image as ImageIcon,
+  Video,
   Code,
   Paperclip,
   Share2,
@@ -26,7 +27,7 @@ interface ChatAreaProps {
   typingUsers: string[];
   onSendMessage: (payload: {
     text: string;
-    msgType: 'text' | 'image' | 'code' | 'file';
+    msgType: 'text' | 'image' | 'video' | 'code' | 'file';
     mediaUrl?: string;
     fileName?: string;
     codeLang?: string;
@@ -57,7 +58,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onOpenMobileSidebar
 }) => {
   const [inputText, setInputText] = useState('');
-  const [msgType, setMsgType] = useState<'text' | 'image' | 'code' | 'file'>('text');
+  const [msgType, setMsgType] = useState<'text' | 'image' | 'video' | 'code' | 'file'>('text');
   const [codeLang, setCodeLang] = useState('javascript');
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileName, setFileName] = useState('');
@@ -163,6 +164,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       const result = event.target?.result as string;
       if (file.type.startsWith('image/')) {
         setMsgType('image');
+        setMediaUrl(result);
+        setFileName(file.name);
+      } else if (file.type.startsWith('video/')) {
+        setMsgType('video');
         setMediaUrl(result);
         setFileName(file.name);
       } else {
@@ -375,6 +380,24 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     </div>
                   )}
 
+                  {/* Video Message */}
+                  {msg.type === 'video' && msg.mediaUrl && (
+                    <div className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-black/40 shadow-lg min-w-[240px]">
+                      <video
+                        src={msg.mediaUrl}
+                        controls
+                        preload="metadata"
+                        className="max-h-80 w-full rounded-xl object-contain bg-black/80"
+                      />
+                      {msg.fileName && (
+                        <div className="px-2.5 py-1.5 text-[11px] text-slate-300 font-medium truncate border-t border-white/10 flex items-center gap-1.5 bg-black/30">
+                          <Video className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                          <span className="truncate">{msg.fileName}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Code Snippet Message */}
                   {msg.type === 'code' && (
                     <div className="mt-2 rounded-xl border border-white/10 bg-black/40 p-3 font-mono text-[11px] text-emerald-300">
@@ -529,8 +552,17 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       {mediaUrl && (
         <div className="flex items-center justify-between border-t border-white/10 bg-white/5 px-4 py-2 text-xs text-slate-200 backdrop-blur-md">
           <div className="flex items-center gap-2">
-            <Paperclip className="h-4 w-4 text-emerald-400" />
-            <span>已附加檔案：{fileName || '預覽附件'}</span>
+            {msgType === 'video' ? (
+              <Video className="h-4 w-4 text-indigo-400" />
+            ) : msgType === 'image' ? (
+              <ImageIcon className="h-4 w-4 text-emerald-400" />
+            ) : (
+              <Paperclip className="h-4 w-4 text-indigo-400" />
+            )}
+            <span>
+              已選擇{msgType === 'video' ? '影片' : msgType === 'image' ? '圖片' : '檔案'}：
+              <strong className="text-white ml-1">{fileName || '媒體附件'}</strong>
+            </span>
           </div>
           <button
             onClick={() => {
@@ -645,17 +677,45 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 <span className="hidden sm:inline">程式碼</span>
               </button>
 
-              {/* File / Image Upload */}
+              {/* Image Upload */}
               <label
                 className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 backdrop-blur-md cursor-pointer transition-all"
-                title="傳送圖片或檔案"
+                title="傳送圖片"
               >
                 <ImageIcon className="h-4 w-4" />
                 <input
                   type="file"
                   className="hidden"
                   onChange={handleFileUpload}
-                  accept="image/*, .txt, .pdf, .json, .zip"
+                  accept="image/*"
+                />
+              </label>
+
+              {/* Video Upload */}
+              <label
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 backdrop-blur-md cursor-pointer transition-all"
+                title="傳送影片 (MP4, WebM, MOV)"
+              >
+                <Video className="h-4 w-4 text-indigo-400" />
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  accept="video/*, .mp4, .webm, .mov, .ogg"
+                />
+              </label>
+
+              {/* General File Upload */}
+              <label
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 backdrop-blur-md cursor-pointer transition-all"
+                title="傳送文件檔案"
+              >
+                <Paperclip className="h-4 w-4" />
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  accept=".txt, .pdf, .doc, .docx, .json, .zip, .rar"
                 />
               </label>
             </div>

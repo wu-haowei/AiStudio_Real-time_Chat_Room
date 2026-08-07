@@ -27,7 +27,7 @@ export interface Message {
   username: string;
   avatar: string;
   text: string;
-  type: 'text' | 'image' | 'code' | 'file';
+  type: 'text' | 'image' | 'video' | 'code' | 'file';
   mediaUrl?: string;
   fileName?: string;
   codeLang?: string;

@@ -15,7 +15,7 @@ interface Message {
   username: string;
   avatar: string;
   text: string;
-  type: 'text' | 'image' | 'code' | 'file';
+  type: 'text' | 'image' | 'video' | 'code' | 'file';
   mediaUrl?: string;
   fileName?: string;
   codeLang?: string;
@@ -83,48 +83,6 @@ const rooms: Map<string, Room> = new Map([
       createdAt: Date.now() - 86400000,
       lastMessage: '歡迎大家來到綜合討論大廳！',
       lastMessageTime: Date.now() - 3600000
-    }
-  ],
-  [
-    'tech',
-    {
-      id: 'tech',
-      title: '💻 前端與技術交流',
-      description: '討論 Web 程式開發、React, TypeScript, PWA 與 AI 應用',
-      category: '技術',
-      icon: '💻',
-      createdBy: '系統管理員',
-      createdAt: Date.now() - 72000000,
-      lastMessage: '大家今天使用什麼 Web 技術開發 App 呢？',
-      lastMessageTime: Date.now() - 1800000
-    }
-  ],
-  [
-    'gaming',
-    {
-      id: 'gaming',
-      title: '🎮 遊戲電競熱情區',
-      description: '組隊揪團、交流遊戲心得與攻略分享',
-      category: '娛樂',
-      icon: '🎮',
-      createdBy: '系統管理員',
-      createdAt: Date.now() - 50000000,
-      lastMessage: '今晚有人要一起組隊開黑嗎？',
-      lastMessageTime: Date.now() - 900000
-    }
-  ],
-  [
-    'music',
-    {
-      id: 'music',
-      title: '🎧 音樂與 Chill 氛圍',
-      description: '分享你喜歡的歌單、Podcast 與創作者',
-      category: '休閒',
-      icon: '🎧',
-      createdBy: '系統管理員',
-      createdAt: Date.now() - 30000000,
-      lastMessage: '推薦大家最近這首很 Chill 的 Lo-Fi 歌曲',
-      lastMessageTime: Date.now() - 600000
     }
   ]
 ]);

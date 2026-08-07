@@ -39,42 +39,6 @@ const DEFAULT_ROOMS: Room[] = [
     lastMessage: '歡迎大家來到綜合討論大廳！',
     lastMessageTime: Date.now() - 3600000,
     activeUserCount: 1
-  },
-  {
-    id: 'tech',
-    title: '💻 前端與技術交流',
-    description: '討論 Web 程式開發、React, TypeScript, PWA 與 AI 應用',
-    category: '技術',
-    icon: '💻',
-    createdBy: '系統管理員',
-    createdAt: Date.now() - 72000000,
-    lastMessage: '大家今天使用什麼 Web 技術開發 App 呢？',
-    lastMessageTime: Date.now() - 1800000,
-    activeUserCount: 1
-  },
-  {
-    id: 'gaming',
-    title: '🎮 遊戲電競熱情區',
-    description: '組隊揪團、交流遊戲心得與攻略分享',
-    category: '娛樂',
-    icon: '🎮',
-    createdBy: '系統管理員',
-    createdAt: Date.now() - 50000000,
-    lastMessage: '今晚有人要一起組隊開黑嗎？',
-    lastMessageTime: Date.now() - 900000,
-    activeUserCount: 1
-  },
-  {
-    id: 'music',
-    title: '🎧 音樂與 Chill 氛圍',
-    description: '分享你喜歡的歌單、Podcast 與創作者',
-    category: '休閒',
-    icon: '🎧',
-    createdBy: '系統管理員',
-    createdAt: Date.now() - 30000000,
-    lastMessage: '推薦大家最近這首很 Chill 的 Lo-Fi 歌曲',
-    lastMessageTime: Date.now() - 600000,
-    activeUserCount: 1
   }
 ];
 
@@ -86,23 +50,10 @@ const INITIAL_MESSAGES: Record<string, Message[]> = {
       userId: 'system',
       username: '🤖 系統助理',
       avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=system',
-      text: '歡迎來到即時房間聊天室！此 App 支援 WebSocket 即時同步、建立專屬房間、PWA 離線安裝與瀏覽器通知。',
+      text: '歡迎來到即時房間聊天室！此 App 支援 WebSocket / WebRTC 即時同步、建立專屬房間、圖片與影片分享、PWA 離線安裝與瀏覽器通知。',
       type: 'text',
       timestamp: Date.now() - 3600000,
       reactions: { '🎉': ['user_demo_1'] }
-    }
-  ],
-  tech: [
-    {
-      id: 'msg_tech_1',
-      roomId: 'tech',
-      userId: 'dev_alex',
-      username: 'Alex (前端工程師)',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-      text: 'PWA (Progressive Web App) 結合 Service Worker 能讓網頁達到原生 App 般的體驗，大家覺得如何？',
-      type: 'text',
-      timestamp: Date.now() - 1800000,
-      reactions: { '👍': ['user_demo_2'], '🚀': ['user_demo_3'] }
     }
   ]
 };
@@ -360,6 +311,8 @@ export default function App() {
                 lastMessage:
                   message.type === 'image'
                     ? '[📷 圖片]'
+                    : message.type === 'video'
+                    ? '[🎥 影片]'
                     : message.type === 'code'
                     ? '[💻 程式碼]'
                     : message.type === 'file'
@@ -471,10 +424,11 @@ export default function App() {
         let hasChange = false;
         const updated = prevRooms.map((room) => {
           let baseRoomCount = 1;
-          if (room.id === 'general') baseRoomCount = Math.max(1, Math.floor(simulatedBaseOnline * 0.45));
-          else if (room.id === 'tech') baseRoomCount = Math.max(1, Math.floor(simulatedBaseOnline * 0.3));
-          else if (room.id === 'gaming') baseRoomCount = Math.max(1, Math.floor(simulatedBaseOnline * 0.2));
-          else if (room.id === 'music') baseRoomCount = Math.max(1, Math.floor(simulatedBaseOnline * 0.1));
+          if (room.id === 'general') {
+            baseRoomCount = Math.max(1, Math.floor(simulatedBaseOnline * 0.7));
+          } else {
+            baseRoomCount = Math.max(1, Math.floor(simulatedBaseOnline * 0.15));
+          }
 
           const activeInRoom = baseRoomCount + (roomTabCounts[room.id] || 0);
 
@@ -874,7 +828,7 @@ export default function App() {
   // Handle message sending
   const handleSendMessage = async (payload: {
     text: string;
-    msgType: 'text' | 'image' | 'code' | 'file';
+    msgType: 'text' | 'image' | 'video' | 'code' | 'file';
     mediaUrl?: string;
     fileName?: string;
     codeLang?: string;
@@ -916,6 +870,8 @@ export default function App() {
             lastMessage:
               newMsg.type === 'image'
                 ? '[📷 圖片]'
+                : newMsg.type === 'video'
+                ? '[🎥 影片]'
                 : newMsg.type === 'code'
                 ? '[💻 程式碼]'
                 : newMsg.type === 'file'
