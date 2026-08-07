@@ -249,6 +249,19 @@ export default function App() {
                   setRooms(data.rooms);
                 }
                 if (typeof data.onlineUsersCount === 'number') setOnlineCount(data.onlineUsersCount);
+
+                // Auto-join target room upon connection initialization
+                const targetRoom = currentRoomIdRef.current || 'general';
+                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(
+                    JSON.stringify({
+                      type: 'join_room',
+                      roomId: targetRoom,
+                      username: userProfileRef.current.username,
+                      avatar: userProfileRef.current.avatar
+                    })
+                  );
+                }
                 break;
               }
 
@@ -442,6 +455,54 @@ export default function App() {
     };
   }, []);
 
+  // Periodic polling sync for multi-window/multi-browser consistency
+  useEffect(() => {
+    const syncServerData = async () => {
+      try {
+        const roomsRes = await fetch('/api/rooms');
+        if (roomsRes.ok) {
+          const roomList = await roomsRes.json();
+          if (Array.isArray(roomList)) {
+            setRooms(roomList);
+            const totalActive = roomList.reduce((acc, r) => acc + (r.activeUserCount || 0), 0);
+            if (totalActive > 0) {
+              setOnlineCount((prev) => Math.max(prev, totalActive));
+            }
+          }
+        }
+      } catch {
+        // Silently ignore network errors during background sync
+      }
+
+      if (currentRoomId) {
+        try {
+          const msgsRes = await fetch(`/api/rooms/${currentRoomId}/messages`);
+          if (msgsRes.ok) {
+            const fetchedMsgs = await msgsRes.json();
+            if (Array.isArray(fetchedMsgs) && fetchedMsgs.length > 0) {
+              setAllRoomMessages((prev) => {
+                const currentMsgs = prev[currentRoomId] || [];
+                if (
+                  currentMsgs.length === fetchedMsgs.length &&
+                  currentMsgs[currentMsgs.length - 1]?.id === fetchedMsgs[fetchedMsgs.length - 1]?.id
+                ) {
+                  return prev;
+                }
+                return { ...prev, [currentRoomId]: fetchedMsgs };
+              });
+            }
+          }
+        } catch {
+          // Silently ignore
+        }
+      }
+    };
+
+    syncServerData();
+    const syncInterval = setInterval(syncServerData, 3000);
+    return () => clearInterval(syncInterval);
+  }, [currentRoomId]);
+
   // Handle switching rooms
   const handleSelectRoom = (roomId: string) => {
     if (roomId === currentRoomId) return;
@@ -462,7 +523,7 @@ export default function App() {
   };
 
   // Handle message sending
-  const handleSendMessage = (payload: {
+  const handleSendMessage = async (payload: {
     text: string;
     msgType: 'text' | 'image' | 'code' | 'file';
     mediaUrl?: string;
@@ -472,23 +533,7 @@ export default function App() {
   }) => {
     if (!currentRoomId) return;
 
-    const newMsg: Message = {
-      id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-      roomId: currentRoomId,
-      userId: userProfile.userId,
-      username: userProfile.username,
-      avatar: userProfile.avatar,
-      text: payload.text || '',
-      type: payload.msgType || 'text',
-      mediaUrl: payload.mediaUrl,
-      fileName: payload.fileName,
-      codeLang: payload.codeLang,
-      replyTo: payload.replyTo,
-      timestamp: Date.now(),
-      reactions: {}
-    };
-
-    // Broadcast via WS if open
+    // Send via WS if open
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
@@ -503,31 +548,35 @@ export default function App() {
         })
       );
     } else {
-      // Offline fallback
-      setAllRoomMessages((prev) => ({
-        ...prev,
-        [currentRoomId]: [...(prev[currentRoomId] || []), newMsg]
-      }));
-
-      setRooms((prev) =>
-        prev.map((r) => {
-          if (r.id === currentRoomId) {
-            return {
-              ...r,
-              lastMessage:
-                newMsg.type === 'image'
-                  ? '[📷 圖片]'
-                  : newMsg.type === 'code'
-                  ? '[💻 程式碼]'
-                  : newMsg.type === 'file'
-                  ? `[📎 檔案] ${newMsg.fileName || ''}`
-                  : newMsg.text,
-              lastMessageTime: newMsg.timestamp
-            };
+      // Send via REST fallback if WebSocket is unavailable
+      try {
+        const res = await fetch(`/api/rooms/${currentRoomId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: payload.text,
+            msgType: payload.msgType,
+            mediaUrl: payload.mediaUrl,
+            fileName: payload.fileName,
+            codeLang: payload.codeLang,
+            replyTo: payload.replyTo,
+            userId: userProfile.userId,
+            username: userProfile.username,
+            avatar: userProfile.avatar
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.message) {
+            setAllRoomMessages((prev) => ({
+              ...prev,
+              [currentRoomId]: [...(prev[currentRoomId] || []), data.message]
+            }));
           }
-          return r;
-        })
-      );
+        }
+      } catch (err) {
+        console.error('Failed to send message via REST:', err);
+      }
     }
   };
 

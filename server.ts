@@ -222,6 +222,22 @@ function broadcastRoomList() {
   });
 }
 
+// WebSocket Ping/Pong keep-alive heartbeat interval
+const heartbeatInterval = setInterval(() => {
+  for (const client of clients) {
+    if (client.ws.readyState === WebSocket.OPEN) {
+      try {
+        client.ws.ping();
+      } catch {
+        // Ignore error
+      }
+    } else {
+      clients.delete(client);
+    }
+  }
+  broadcastRoomList();
+}, 10000);
+
 // WebSocket connection lifecycle
 wss.on('connection', (ws) => {
   const meta: ClientMeta = {
@@ -232,6 +248,10 @@ wss.on('connection', (ws) => {
     currentRoomId: null
   };
   clients.add(meta);
+
+  ws.on('pong', () => {
+    // Client responded to ping, connection is active
+  });
 
   // Send initial handshake state
   ws.send(
@@ -572,6 +592,60 @@ app.get('/api/rooms/:id/messages', (req, res) => {
   const roomId = req.params.id;
   const msgs = roomMessages.get(roomId) || [];
   res.json(msgs);
+});
+
+app.post('/api/rooms/:id/messages', (req, res) => {
+  const roomId = req.params.id;
+  const { text, msgType, mediaUrl, fileName, codeLang, replyTo, userId, username, avatar } = req.body;
+  if (!roomId || (!text && !mediaUrl)) {
+    return res.status(400).json({ error: '內容不能為空' });
+  }
+
+  const newMsg: Message = {
+    id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+    roomId,
+    userId: userId || 'guest_' + Math.random().toString(36).substring(2, 6),
+    username: username || '熱情用戶',
+    avatar: avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest',
+    text: text || '',
+    type: msgType || 'text',
+    mediaUrl,
+    fileName,
+    codeLang,
+    replyTo,
+    timestamp: Date.now(),
+    reactions: {}
+  };
+
+  if (!roomMessages.has(roomId)) {
+    roomMessages.set(roomId, []);
+  }
+
+  const msgs = roomMessages.get(roomId)!;
+  msgs.push(newMsg);
+  if (msgs.length > 250) msgs.shift();
+
+  const roomObj = rooms.get(roomId);
+  if (roomObj) {
+    roomObj.lastMessage =
+      newMsg.type === 'image'
+        ? '[📷 圖片]'
+        : newMsg.type === 'code'
+        ? '[💻 程式碼]'
+        : newMsg.type === 'file'
+        ? `[📎 檔案] ${newMsg.fileName || ''}`
+        : newMsg.text;
+    roomObj.lastMessageTime = newMsg.timestamp;
+  }
+
+  broadcastToRoom(roomId, {
+    type: 'new_message',
+    message: newMsg
+  });
+
+  broadcastRoomList();
+
+  res.json({ success: true, message: newMsg });
 });
 
 // Vite & Static file handling
