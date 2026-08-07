@@ -200,7 +200,7 @@ export default function App() {
       setStatus('connecting');
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}`;
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
 
       try {
         const ws = new WebSocket(wsUrl);
@@ -245,27 +245,18 @@ export default function App() {
                 if (data.userId) {
                   setUserProfile((p) => ({ ...p, userId: data.userId }));
                 }
-                if (data.rooms && data.rooms.length > 0) {
-                  setRooms((prev) => {
-                    // Merge server rooms with local rooms
-                    const serverIds = new Set(data.rooms.map((r: Room) => r.id));
-                    const localOnly = prev.filter((r) => !serverIds.has(r.id));
-                    return [...data.rooms, ...localOnly];
-                  });
+                if (data.rooms && Array.isArray(data.rooms)) {
+                  setRooms(data.rooms);
                 }
-                if (data.onlineUsersCount) setOnlineCount(data.onlineUsersCount);
+                if (typeof data.onlineUsersCount === 'number') setOnlineCount(data.onlineUsersCount);
                 break;
               }
 
               case 'room_list_updated': {
-                if (data.rooms && data.rooms.length > 0) {
-                  setRooms((prev) => {
-                    const serverIds = new Set(data.rooms.map((r: Room) => r.id));
-                    const localOnly = prev.filter((r) => !serverIds.has(r.id));
-                    return [...data.rooms, ...localOnly];
-                  });
+                if (data.rooms && Array.isArray(data.rooms)) {
+                  setRooms(data.rooms);
                 }
-                if (data.onlineUsersCount) setOnlineCount(data.onlineUsersCount);
+                if (typeof data.onlineUsersCount === 'number') setOnlineCount(data.onlineUsersCount);
                 break;
               }
 
@@ -311,44 +302,58 @@ export default function App() {
               }
 
               case 'user_joined_room': {
-                if (data.roomId === currRoomId) {
-                  const sysMsg: Message = {
-                    id: 'sys_' + Date.now(),
-                    roomId: data.roomId,
-                    userId: 'system',
-                    username: '系統',
-                    avatar: '',
-                    text: `👋 ${data.username} 進入了聊天房間`,
-                    type: 'text',
-                    timestamp: data.timestamp,
-                    reactions: {}
-                  };
-                  setAllRoomMessages((prev) => ({
-                    ...prev,
-                    [data.roomId]: [...(prev[data.roomId] || []), sysMsg]
-                  }));
-                  if (prof.soundEnabled) playJoinSound();
+                if (data.roomId) {
+                  if (typeof data.activeUserCount === 'number') {
+                    setRooms((prev) =>
+                      prev.map((r) => (r.id === data.roomId ? { ...r, activeUserCount: data.activeUserCount } : r))
+                    );
+                  }
+                  if (data.roomId === currRoomId) {
+                    const sysMsg: Message = {
+                      id: 'sys_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
+                      roomId: data.roomId,
+                      userId: 'system',
+                      username: '系統',
+                      avatar: '',
+                      text: `👋 ${data.username} 進入了聊天房間`,
+                      type: 'text',
+                      timestamp: data.timestamp || Date.now(),
+                      reactions: {}
+                    };
+                    setAllRoomMessages((prev) => ({
+                      ...prev,
+                      [data.roomId]: [...(prev[data.roomId] || []), sysMsg]
+                    }));
+                    if (prof.soundEnabled) playJoinSound();
+                  }
                 }
                 break;
               }
 
               case 'user_left_room': {
-                if (data.roomId === currRoomId) {
-                  const sysMsg: Message = {
-                    id: 'sys_left_' + Date.now(),
-                    roomId: data.roomId,
-                    userId: 'system',
-                    username: '系統',
-                    avatar: '',
-                    text: `🚪 ${data.username} 離開了聊天房間`,
-                    type: 'text',
-                    timestamp: data.timestamp,
-                    reactions: {}
-                  };
-                  setAllRoomMessages((prev) => ({
-                    ...prev,
-                    [data.roomId]: [...(prev[data.roomId] || []), sysMsg]
-                  }));
+                if (data.roomId) {
+                  if (typeof data.activeUserCount === 'number') {
+                    setRooms((prev) =>
+                      prev.map((r) => (r.id === data.roomId ? { ...r, activeUserCount: data.activeUserCount } : r))
+                    );
+                  }
+                  if (data.roomId === currRoomId) {
+                    const sysMsg: Message = {
+                      id: 'sys_left_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
+                      roomId: data.roomId,
+                      userId: 'system',
+                      username: '系統',
+                      avatar: '',
+                      text: `🚪 ${data.username} 離開了聊天房間`,
+                      type: 'text',
+                      timestamp: data.timestamp || Date.now(),
+                      reactions: {}
+                    };
+                    setAllRoomMessages((prev) => ({
+                      ...prev,
+                      [data.roomId]: [...(prev[data.roomId] || []), sysMsg]
+                    }));
+                  }
                 }
                 break;
               }
@@ -483,33 +488,6 @@ export default function App() {
       reactions: {}
     };
 
-    // Update local state immediately
-    setAllRoomMessages((prev) => ({
-      ...prev,
-      [currentRoomId]: [...(prev[currentRoomId] || []), newMsg]
-    }));
-
-    // Update room last message info
-    setRooms((prev) =>
-      prev.map((r) => {
-        if (r.id === currentRoomId) {
-          return {
-            ...r,
-            lastMessage:
-              newMsg.type === 'image'
-                ? '[📷 圖片]'
-                : newMsg.type === 'code'
-                ? '[💻 程式碼]'
-                : newMsg.type === 'file'
-                ? `[📎 檔案] ${newMsg.fileName || ''}`
-                : newMsg.text,
-            lastMessageTime: newMsg.timestamp
-          };
-        }
-        return r;
-      })
-    );
-
     // Broadcast via WS if open
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(
@@ -522,6 +500,32 @@ export default function App() {
           fileName: payload.fileName,
           codeLang: payload.codeLang,
           replyTo: payload.replyTo
+        })
+      );
+    } else {
+      // Offline fallback
+      setAllRoomMessages((prev) => ({
+        ...prev,
+        [currentRoomId]: [...(prev[currentRoomId] || []), newMsg]
+      }));
+
+      setRooms((prev) =>
+        prev.map((r) => {
+          if (r.id === currentRoomId) {
+            return {
+              ...r,
+              lastMessage:
+                newMsg.type === 'image'
+                  ? '[📷 圖片]'
+                  : newMsg.type === 'code'
+                  ? '[💻 程式碼]'
+                  : newMsg.type === 'file'
+                  ? `[📎 檔案] ${newMsg.fileName || ''}`
+                  : newMsg.text,
+              lastMessageTime: newMsg.timestamp
+            };
+          }
+          return r;
         })
       );
     }

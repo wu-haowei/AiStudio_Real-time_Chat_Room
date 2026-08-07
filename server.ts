@@ -54,7 +54,20 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 
 const httpServer = http.createServer(app);
-const wss = new WebSocketServer({ server: httpServer });
+const wss = new WebSocketServer({ noServer: true });
+
+// Handle WebSocket HTTP upgrades cleanly
+httpServer.on('upgrade', (request, socket, head) => {
+  const url = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
+  // Handle WS connection requests on /ws or /
+  if (url.pathname === '/ws' || url.pathname === '/') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
 
 // Initial Default Rooms
 const rooms: Map<string, Room> = new Map([
@@ -157,7 +170,17 @@ const clients: Set<ClientMeta> = new Set();
 function getActiveRoomUserCount(roomId: string): number {
   let count = 0;
   for (const client of clients) {
-    if (client.currentRoomId === roomId) {
+    if (client.currentRoomId === roomId && client.ws.readyState === WebSocket.OPEN) {
+      count++;
+    }
+  }
+  return count;
+}
+
+function getOnlineUsersCount(): number {
+  let count = 0;
+  for (const client of clients) {
+    if (client.ws.readyState === WebSocket.OPEN) {
       count++;
     }
   }
@@ -195,7 +218,7 @@ function broadcastRoomList() {
   broadcastToAll({
     type: 'room_list_updated',
     rooms: getRoomsListPayload(),
-    onlineUsersCount: clients.size
+    onlineUsersCount: getOnlineUsersCount()
   });
 }
 
@@ -555,7 +578,7 @@ app.get('/api/rooms/:id/messages', (req, res) => {
 async function setupViteOrStatic() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: 'spa'
     });
     app.use(vite.middlewares);
