@@ -23,6 +23,8 @@ import {
 } from './utils/pwa';
 
 const LOCAL_STORAGE_PROFILE_KEY = 'realtime_chat_user_profile_v1';
+const LOCAL_STORAGE_ROOMS_KEY = 'realtime_chat_rooms_v3';
+const LOCAL_STORAGE_MSGS_KEY = 'realtime_chat_msgs_v3';
 
 const DEFAULT_ROOMS: Room[] = [
   {
@@ -125,10 +127,28 @@ export default function App() {
 
   // UI state
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
-  const [rooms, setRooms] = useState<Room[]>(DEFAULT_ROOMS);
+  const [rooms, setRooms] = useState<Room[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_ROOMS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_ROOMS;
+  });
   const [currentRoomId, setCurrentRoomId] = useState<string | null>('general');
-  const [allRoomMessages, setAllRoomMessages] = useState<Record<string, Message[]>>(INITIAL_MESSAGES);
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES['general'] || []);
+  const [allRoomMessages, setAllRoomMessages] = useState<Record<string, Message[]>>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_MSGS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {}
+    return INITIAL_MESSAGES;
+  });
+  const [messages, setMessages] = useState<Message[]>([]);
   const [onlineCount, setOnlineCount] = useState(1);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('全部');
@@ -142,6 +162,7 @@ export default function App() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<any>(null);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
 
   const userProfileRef = useRef(userProfile);
   const currentRoomIdRef = useRef(currentRoomId);
@@ -182,6 +203,107 @@ export default function App() {
       );
     }
   };
+
+  // BroadcastChannel and Storage Listener for instant multi-tab & multi-window sync (especially on static hosts like GitHub Pages)
+  useEffect(() => {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const bc = new BroadcastChannel('chat_app_sync_v3');
+      broadcastChannelRef.current = bc;
+
+      bc.onmessage = (event) => {
+        const data = event.data;
+        if (!data || !data.type) return;
+
+        if (data.type === 'new_message' && data.roomId && data.message) {
+          setAllRoomMessages((prev) => {
+            const list = prev[data.roomId] || [];
+            if (list.some((m) => m.id === data.message.id)) return prev;
+            const updated = [...list, data.message];
+            const next = { ...prev, [data.roomId]: updated };
+            try { localStorage.setItem(LOCAL_STORAGE_MSGS_KEY, JSON.stringify(next)); } catch {}
+            return next;
+          });
+
+          setRooms((prev) => {
+            const next = prev.map((r) => {
+              if (r.id === data.roomId) {
+                return {
+                  ...r,
+                  lastMessage:
+                    data.message.type === 'image'
+                      ? '[📷 圖片]'
+                      : data.message.type === 'code'
+                      ? '[💻 程式碼]'
+                      : data.message.type === 'file'
+                      ? `[📎 檔案] ${data.message.fileName || ''}`
+                      : data.message.text,
+                  lastMessageTime: data.message.timestamp
+                };
+              }
+              return r;
+            });
+            try { localStorage.setItem(LOCAL_STORAGE_ROOMS_KEY, JSON.stringify(next)); } catch {}
+            return next;
+          });
+
+          if (data.roomId === currentRoomIdRef.current && data.message.userId !== userProfileRef.current.userId) {
+            if (userProfileRef.current.soundEnabled) playMessageSound();
+          }
+        }
+
+        if (data.type === 'create_room' && data.room) {
+          setRooms((prev) => {
+            if (prev.some((r) => r.id === data.room.id)) return prev;
+            const next = [data.room, ...prev];
+            try { localStorage.setItem(LOCAL_STORAGE_ROOMS_KEY, JSON.stringify(next)); } catch {}
+            return next;
+          });
+          if (data.welcomeMsg) {
+            setAllRoomMessages((prev) => {
+              if (prev[data.room.id]) return prev;
+              const next = { ...prev, [data.room.id]: [data.welcomeMsg] };
+              try { localStorage.setItem(LOCAL_STORAGE_MSGS_KEY, JSON.stringify(next)); } catch {}
+              return next;
+            });
+          }
+        }
+
+        if (data.type === 'add_reaction' && data.roomId && data.messageId && data.reactions) {
+          setAllRoomMessages((prev) => {
+            const msgs = prev[data.roomId] || [];
+            const updated = msgs.map((m) => (m.id === data.messageId ? { ...m, reactions: data.reactions } : m));
+            const next = { ...prev, [data.roomId]: updated };
+            try { localStorage.setItem(LOCAL_STORAGE_MSGS_KEY, JSON.stringify(next)); } catch {}
+            return next;
+          });
+        }
+      };
+    }
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === LOCAL_STORAGE_MSGS_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && typeof parsed === 'object') setAllRoomMessages(parsed);
+        } catch {}
+      }
+      if (e.key === LOCAL_STORAGE_ROOMS_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed) && parsed.length > 0) setRooms(parsed);
+        } catch {}
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+      }
+    };
+  }, []);
 
   // Connect to WebSocket Server (runs once, persists across state updates)
   useEffect(() => {
@@ -533,24 +655,87 @@ export default function App() {
   }) => {
     if (!currentRoomId) return;
 
-    // Send via WS if open
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          type: 'send_message',
-          roomId: currentRoomId,
-          text: payload.text,
-          msgType: payload.msgType,
-          mediaUrl: payload.mediaUrl,
-          fileName: payload.fileName,
-          codeLang: payload.codeLang,
-          replyTo: payload.replyTo
-        })
-      );
-    } else {
-      // Send via REST fallback if WebSocket is unavailable
+    const newMsg: Message = {
+      id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      roomId: currentRoomId,
+      userId: userProfile.userId,
+      username: userProfile.username,
+      avatar: userProfile.avatar,
+      text: payload.text || '',
+      type: payload.msgType || 'text',
+      mediaUrl: payload.mediaUrl,
+      fileName: payload.fileName,
+      codeLang: payload.codeLang,
+      replyTo: payload.replyTo,
+      timestamp: Date.now(),
+      reactions: {}
+    };
+
+    // 1. Optimistic UI update locally
+    setAllRoomMessages((prev) => {
+      const roomMsgs = prev[currentRoomId] || [];
+      if (roomMsgs.some((m) => m.id === newMsg.id)) return prev;
+      const updated = [...roomMsgs, newMsg];
+      const next = { ...prev, [currentRoomId]: updated };
+      try { localStorage.setItem(LOCAL_STORAGE_MSGS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    setRooms((prev) => {
+      const next = prev.map((r) => {
+        if (r.id === currentRoomId) {
+          return {
+            ...r,
+            lastMessage:
+              newMsg.type === 'image'
+                ? '[📷 圖片]'
+                : newMsg.type === 'code'
+                ? '[💻 程式碼]'
+                : newMsg.type === 'file'
+                ? `[📎 檔案] ${newMsg.fileName || ''}`
+                : newMsg.text,
+            lastMessageTime: newMsg.timestamp
+          };
+        }
+        return r;
+      });
+      try { localStorage.setItem(LOCAL_STORAGE_ROOMS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    // 2. Broadcast via BroadcastChannel (for multi-tab / GitHub Pages sync)
+    if (broadcastChannelRef.current) {
       try {
-        const res = await fetch(`/api/rooms/${currentRoomId}/messages`, {
+        broadcastChannelRef.current.postMessage({
+          type: 'new_message',
+          roomId: currentRoomId,
+          message: newMsg
+        });
+      } catch {}
+    }
+
+    // 3. Send via WS if open
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'send_message',
+            roomId: currentRoomId,
+            text: payload.text,
+            msgType: payload.msgType,
+            mediaUrl: payload.mediaUrl,
+            fileName: payload.fileName,
+            codeLang: payload.codeLang,
+            replyTo: payload.replyTo
+          })
+        );
+      } catch (err) {
+        console.warn('WS send failed:', err);
+      }
+    } else {
+      // Safe REST fallback (suppress network errors on static hosting like GitHub Pages)
+      try {
+        await fetch(`/api/rooms/${currentRoomId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -565,17 +750,8 @@ export default function App() {
             avatar: userProfile.avatar
           })
         });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.message) {
-            setAllRoomMessages((prev) => ({
-              ...prev,
-              [currentRoomId]: [...(prev[currentRoomId] || []), data.message]
-            }));
-          }
-        }
-      } catch (err) {
-        console.error('Failed to send message via REST:', err);
+      } catch {
+        // Silently ignore REST failures on static hosts
       }
     }
   };
@@ -597,6 +773,8 @@ export default function App() {
   const handleAddReaction = (messageId: string, emoji: string) => {
     if (!currentRoomId) return;
 
+    let nextReactions: Record<string, string[]> = {};
+
     setAllRoomMessages((prev) => {
       const roomMsgs = prev[currentRoomId] || [];
       const updated = roomMsgs.map((m) => {
@@ -614,22 +792,38 @@ export default function App() {
           } else {
             delete reactions[emoji];
           }
+          nextReactions = reactions;
           return { ...m, reactions };
         }
         return m;
       });
-      return { ...prev, [currentRoomId]: updated };
+      const next = { ...prev, [currentRoomId]: updated };
+      try { localStorage.setItem(LOCAL_STORAGE_MSGS_KEY, JSON.stringify(next)); } catch {}
+      return next;
     });
 
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
+    if (broadcastChannelRef.current) {
+      try {
+        broadcastChannelRef.current.postMessage({
           type: 'add_reaction',
           roomId: currentRoomId,
           messageId,
-          emoji
-        })
-      );
+          reactions: nextReactions
+        });
+      } catch {}
+    }
+
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'add_reaction',
+            roomId: currentRoomId,
+            messageId,
+            emoji
+          })
+        );
+      } catch {}
     }
   };
 
@@ -642,7 +836,7 @@ export default function App() {
     isPrivate?: boolean;
     password?: string;
   }) => {
-    const newRoomId = 'room_' + Date.now();
+    const newRoomId = 'room_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
     const newRoom: Room = {
       id: newRoomId,
       title: roomData.title,
@@ -670,27 +864,45 @@ export default function App() {
       reactions: {}
     };
 
-    // 1. Instantly update local state
-    setRooms((prev) => [newRoom, ...prev]);
-    setAllRoomMessages((prev) => ({
-      ...prev,
-      [newRoomId]: [welcomeMsg]
-    }));
+    // 1. Instantly update local state & localStorage
+    setRooms((prev) => {
+      const updated = [newRoom, ...prev];
+      try { localStorage.setItem(LOCAL_STORAGE_ROOMS_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    setAllRoomMessages((prev) => {
+      const updated = { ...prev, [newRoomId]: [welcomeMsg] };
+      try { localStorage.setItem(LOCAL_STORAGE_MSGS_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
 
     // 2. Switch to new room
     setCurrentRoomId(newRoomId);
     setIsCreateModalOpen(false);
     setIsSidebarOpen(false);
 
-    // 3. Send to WS server if available
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
+    // 3. Broadcast via BroadcastChannel
+    if (broadcastChannelRef.current) {
+      try {
+        broadcastChannelRef.current.postMessage({
           type: 'create_room',
-          id: newRoomId,
-          ...roomData
-        })
-      );
+          room: newRoom,
+          welcomeMsg
+        });
+      } catch {}
+    }
+
+    // 4. Send to WS server if available
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'create_room',
+            id: newRoomId,
+            ...roomData
+          })
+        );
+      } catch {}
     }
   };
 
