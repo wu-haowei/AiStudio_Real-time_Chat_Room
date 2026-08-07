@@ -17,7 +17,8 @@ import {
   MessageSquare,
   Sparkles,
   ExternalLink,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react';
 import { Room, Message, ReplyRef, UserProfile } from '../types';
 
@@ -37,6 +38,7 @@ interface ChatAreaProps {
   onSendTyping: (isTyping: boolean) => void;
   onAddReaction: (messageId: string, emoji: string) => void;
   onOpenMobileSidebar: () => void;
+  onDeleteRoom?: (roomId: string, roomTitle: string) => void;
 }
 
 const EMOJI_LIST = ['❤️', '👍', '😂', '🔥', '🎉', '🚀', '👏', '😍', '💯', '🙏'];
@@ -56,7 +58,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onSendMessage,
   onSendTyping,
   onAddReaction,
-  onOpenMobileSidebar
+  onOpenMobileSidebar,
+  onDeleteRoom
 }) => {
   const [inputText, setInputText] = useState('');
   const [msgType, setMsgType] = useState<'text' | 'image' | 'video' | 'code' | 'file'>('text');
@@ -260,6 +263,23 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               </>
             )}
           </button>
+
+          {/* Delete room button */}
+          {room.id !== 'general' && onDeleteRoom && (
+            <button
+              onClick={() => {
+                if (window.confirm(`確定要刪除房間「${room.title}」嗎？刪除後無法恢復。`)) {
+                  onDeleteRoom(room.id, room.title);
+                }
+              }}
+              className="flex items-center gap-1 rounded-xl border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-500/20 hover:text-rose-200 backdrop-blur-md transition-all active:scale-95"
+              title="刪除房間"
+              id="btn-delete-room"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">刪除房間</span>
+            </button>
+          )}
         </div>
       </div>
 

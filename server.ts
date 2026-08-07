@@ -146,10 +146,14 @@ function getOnlineUsersCount(): number {
 }
 
 function getRoomsListPayload() {
-  return Array.from(rooms.values()).map((room) => ({
-    ...room,
-    activeUserCount: getActiveRoomUserCount(room.id)
-  }));
+  return Array.from(rooms.values()).map((room) => {
+    const { password, ...safeRoom } = room;
+    return {
+      ...safeRoom,
+      hasPassword: !!password,
+      activeUserCount: getActiveRoomUserCount(room.id)
+    };
+  });
 }
 
 function broadcastToAll(data: object) {
@@ -180,8 +184,12 @@ function broadcastRoomList() {
   });
 }
 
-// WebSocket Ping/Pong keep-alive heartbeat interval
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+// WebSocket Ping/Pong keep-alive heartbeat & auto room cleanup interval
 const heartbeatInterval = setInterval(() => {
+  const now = Date.now();
+
   for (const client of clients) {
     if (client.ws.readyState === WebSocket.OPEN) {
       try {
@@ -193,6 +201,33 @@ const heartbeatInterval = setInterval(() => {
       clients.delete(client);
     }
   }
+
+  // Check for inactive rooms (1 hour without users/activity)
+  let roomsCleaned = false;
+  for (const [roomId, room] of Array.from(rooms.entries())) {
+    if (roomId === 'general') continue; // Keep default lobby active
+
+    const userCount = getActiveRoomUserCount(roomId);
+    const lastActive = room.lastMessageTime || room.createdAt || now;
+
+    if (userCount === 0 && (now - lastActive > ONE_HOUR_MS)) {
+      rooms.delete(roomId);
+      roomMessages.delete(roomId);
+      roomsCleaned = true;
+
+      // Broadcast room_deleted event
+      broadcastToAll({
+        type: 'room_deleted',
+        roomId,
+        roomTitle: room.title,
+        reason: 'inactivity',
+        fallbackRoomId: 'general'
+      });
+
+      console.log(`[Auto-Close] Room "${room.title}" (${roomId}) closed due to 1 hour inactivity.`);
+    }
+  }
+
   broadcastRoomList();
 }, 10000);
 
@@ -493,6 +528,36 @@ wss.on('connection', (ws) => {
               messages: [welcomeMsg]
             })
           );
+
+          broadcastRoomList();
+          break;
+        }
+
+        case 'delete_room': {
+          const { roomId } = payload;
+          if (!roomId || roomId === 'general') return;
+
+          const targetRoom = rooms.get(roomId);
+          if (!targetRoom) return;
+
+          const roomTitle = targetRoom.title;
+          rooms.delete(roomId);
+          roomMessages.delete(roomId);
+
+          // Notify clients and reassign affected users to general
+          for (const client of clients) {
+            if (client.currentRoomId === roomId) {
+              client.currentRoomId = 'general';
+            }
+          }
+
+          broadcastToAll({
+            type: 'room_deleted',
+            roomId,
+            roomTitle,
+            reason: 'manual',
+            fallbackRoomId: 'general'
+          });
 
           broadcastRoomList();
           break;

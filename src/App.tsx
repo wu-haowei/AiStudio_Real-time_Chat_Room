@@ -597,8 +597,15 @@ export default function App() {
 
               case 'joined_room_success': {
                 if (data.room) {
+                  const roomId = data.room.id;
+                  setUnlockedRoomIds((prev) => {
+                    if (prev.includes(roomId)) return prev;
+                    const next = [...prev, roomId];
+                    try { localStorage.setItem(LOCAL_STORAGE_UNLOCKED_ROOMS_KEY, JSON.stringify(next)); } catch {}
+                    return next;
+                  });
                   setRooms((prev) =>
-                    prev.map((r) => (r.id === data.room.id ? { ...r, ...data.room } : r))
+                    prev.map((r) => (r.id === roomId ? { ...r, ...data.room } : r))
                   );
                 }
                 if (data.messages && data.room) {
@@ -609,6 +616,36 @@ export default function App() {
                   }));
                 }
                 setTypingUsers([]);
+                break;
+              }
+
+              case 'room_deleted': {
+                const { roomId, roomTitle, reason, fallbackRoomId } = data;
+                if (roomId) {
+                  setRooms((prev) => prev.filter((r) => r.id !== roomId));
+                  setAllRoomMessages((prev) => {
+                    const copy = { ...prev };
+                    delete copy[roomId];
+                    return copy;
+                  });
+
+                  if (currentRoomIdRef.current === roomId) {
+                    const fallback = fallbackRoomId || 'general';
+                    setCurrentRoomId(fallback);
+                    const roomObj = roomsRef.current.find((r) => r.id === fallback);
+                    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                      wsRef.current.send(
+                        JSON.stringify({
+                          type: 'join_room',
+                          roomId: fallback,
+                          password: roomObj?.password,
+                          username: prof.username,
+                          avatar: prof.avatar
+                        })
+                      );
+                    }
+                  }
+                }
                 break;
               }
 
@@ -870,7 +907,7 @@ export default function App() {
     if (!targetRoom) return;
 
     // Password verification for private rooms
-    if (targetRoom.isPrivate && targetRoom.password && !unlockedRoomIds.includes(roomId)) {
+    if (targetRoom.isPrivate && !unlockedRoomIds.includes(roomId)) {
       setPendingRoomForPassword(targetRoom);
       setPasswordModalError('');
       setIsPasswordModalOpen(true);
@@ -884,22 +921,11 @@ export default function App() {
   const handleConfirmRoomPassword = (enteredPassword: string) => {
     if (!pendingRoomForPassword) return;
 
-    if (enteredPassword === pendingRoomForPassword.password) {
-      const roomId = pendingRoomForPassword.id;
-      setUnlockedRoomIds((prev) => {
-        if (prev.includes(roomId)) return prev;
-        const next = [...prev, roomId];
-        try { localStorage.setItem(LOCAL_STORAGE_UNLOCKED_ROOMS_KEY, JSON.stringify(next)); } catch {}
-        return next;
-      });
-
-      setIsPasswordModalOpen(false);
-      enterRoom(roomId, enteredPassword);
-      setPendingRoomForPassword(null);
-      setPasswordModalError('');
-    } else {
-      setPasswordModalError('密碼錯誤，請重新輸入');
-    }
+    const roomId = pendingRoomForPassword.id;
+    setIsPasswordModalOpen(false);
+    setPasswordModalError('');
+    enterRoom(roomId, enteredPassword);
+    setPendingRoomForPassword(null);
   };
 
   // Handle message sending
@@ -1191,6 +1217,25 @@ export default function App() {
     }
   };
 
+  // Handle Room Deletion
+  const handleDeleteRoom = (roomId: string) => {
+    if (roomId === 'general') return;
+
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: 'delete_room',
+          roomId
+        })
+      );
+    } else {
+      setRooms((prev) => prev.filter((r) => r.id !== roomId));
+      if (currentRoomId === roomId) {
+        setCurrentRoomId('general');
+      }
+    }
+  };
+
   // Handle PWA installation
   const handleInstallPWA = async () => {
     const installed = await promptPWAInstall();
@@ -1252,6 +1297,7 @@ export default function App() {
           onOpenCreateModal={() => setIsCreateModalOpen(true)}
           onSelectCategory={(cat) => setActiveCategory(cat)}
           onCloseSidebar={() => setIsSidebarOpen(false)}
+          onDeleteRoom={handleDeleteRoom}
         />
 
         {/* Chat Area */}
@@ -1264,6 +1310,7 @@ export default function App() {
           onSendTyping={handleSendTyping}
           onAddReaction={handleAddReaction}
           onOpenMobileSidebar={() => setIsSidebarOpen(true)}
+          onDeleteRoom={handleDeleteRoom}
         />
       </div>
 

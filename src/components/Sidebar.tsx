@@ -7,7 +7,8 @@ import {
   Lock,
   Hash,
   X,
-  Sparkles
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 import { Room, CategoryFilter } from '../types';
 
@@ -20,6 +21,7 @@ interface SidebarProps {
   onOpenCreateModal: () => void;
   onSelectCategory: (cat: CategoryFilter) => void;
   onCloseSidebar: () => void;
+  onDeleteRoom?: (roomId: string, roomTitle: string) => void;
 }
 
 const CATEGORIES: CategoryFilter[] = ['全部', '綜合', '技術', '娛樂', '休閒', '自訂'];
@@ -32,7 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectRoom,
   onOpenCreateModal,
   onSelectCategory,
-  onCloseSidebar
+  onCloseSidebar,
+  onDeleteRoom
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -179,11 +182,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           <Lock className="h-3 w-3 text-amber-400 shrink-0" />
                         )}
                       </h3>
-                      {room.lastMessageTime && (
-                        <span className="shrink-0 text-[10px] text-slate-400">
-                          {formatShortTime(room.lastMessageTime)}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {room.lastMessageTime && (
+                          <span className="text-[10px] text-slate-400">
+                            {formatShortTime(room.lastMessageTime)}
+                          </span>
+                        )}
+                        {room.id !== 'general' && onDeleteRoom && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`確定要刪除房間「${room.title}」嗎？`)) {
+                                onDeleteRoom(room.id, room.title);
+                              }
+                            }}
+                            className="rounded p-1 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-rose-500/20 hover:text-rose-300 transition-all"
+                            title="刪除房間"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <p className="mt-0.5 truncate text-[11px] text-slate-400">
