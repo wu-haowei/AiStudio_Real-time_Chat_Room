@@ -371,15 +371,15 @@ wss.on('connection', (ws) => {
         }
 
         case 'send_message': {
-          const { roomId, text, msgType, mediaUrl, fileName, codeLang, replyTo } = payload;
+          const { roomId, text, msgType, mediaUrl, fileName, codeLang, replyTo, id, userId, username, avatar } = payload;
           if (!roomId || (!text && !mediaUrl)) return;
 
           const newMsg: Message = {
-            id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            id: (id && typeof id === 'string') ? id : ('msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)),
             roomId,
-            userId: meta.userId,
-            username: meta.username,
-            avatar: meta.avatar,
+            userId: userId || meta.userId,
+            username: username || meta.username,
+            avatar: avatar || meta.avatar,
             text: text || '',
             type: msgType || 'text',
             mediaUrl,
@@ -414,13 +414,13 @@ wss.on('connection', (ws) => {
             roomObj.lastMessageTime = newMsg.timestamp;
           }
 
-          // Broadcast message to everyone in room (including sender so client gets official timestamp & ID)
-          broadcastToRoom(roomId, {
+          // Broadcast message to ALL connected clients so cross-browser real-time sync is guaranteed
+          broadcastToAll({
             type: 'new_message',
             message: newMsg
           });
 
-          // Also broadcast to room list so previews update across app
+          // Also broadcast room list update
           broadcastRoomList();
           break;
         }
@@ -428,17 +428,13 @@ wss.on('connection', (ws) => {
         case 'typing': {
           const { roomId, isTyping } = payload;
           if (roomId) {
-            broadcastToRoom(
+            broadcastToAll({
+              type: 'user_typing',
               roomId,
-              {
-                type: 'user_typing',
-                roomId,
-                userId: meta.userId,
-                username: meta.username,
-                isTyping
-              },
-              ws
-            );
+              userId: meta.userId,
+              username: meta.username,
+              isTyping
+            });
           }
           break;
         }
@@ -465,7 +461,7 @@ wss.on('connection', (ws) => {
               targetMsg.reactions[emoji].push(meta.userId);
             }
 
-            broadcastToRoom(roomId, {
+            broadcastToAll({
               type: 'reaction_updated',
               roomId,
               messageId,
@@ -633,13 +629,13 @@ app.get('/api/rooms/:id/messages', (req, res) => {
 
 app.post('/api/rooms/:id/messages', (req, res) => {
   const roomId = req.params.id;
-  const { text, msgType, mediaUrl, fileName, codeLang, replyTo, userId, username, avatar } = req.body;
+  const { text, msgType, mediaUrl, fileName, codeLang, replyTo, userId, username, avatar, id } = req.body;
   if (!roomId || (!text && !mediaUrl)) {
     return res.status(400).json({ error: '內容不能為空' });
   }
 
   const newMsg: Message = {
-    id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+    id: (id && typeof id === 'string') ? id : ('msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)),
     roomId,
     userId: userId || 'guest_' + Math.random().toString(36).substring(2, 6),
     username: username || '熱情用戶',
@@ -675,7 +671,7 @@ app.post('/api/rooms/:id/messages', (req, res) => {
     roomObj.lastMessageTime = newMsg.timestamp;
   }
 
-  broadcastToRoom(roomId, {
+  broadcastToAll({
     type: 'new_message',
     message: newMsg
   });

@@ -28,6 +28,7 @@ const LOCAL_STORAGE_PROFILE_KEY = 'realtime_chat_user_profile_v1';
 const LOCAL_STORAGE_ROOMS_KEY = 'realtime_chat_rooms_v3';
 const LOCAL_STORAGE_MSGS_KEY = 'realtime_chat_msgs_v3';
 const LOCAL_STORAGE_UNLOCKED_ROOMS_KEY = 'realtime_chat_unlocked_rooms_v1';
+const LOCAL_STORAGE_ROOM_PASSWORDS_KEY = 'realtime_chat_room_passwords_v1';
 
 const DEFAULT_ROOMS: Room[] = [
   {
@@ -115,6 +116,17 @@ export default function App() {
     } catch {}
     return ['general'];
   });
+  const [savedRoomPasswords, setSavedRoomPasswords] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_ROOM_PASSWORDS_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {};
+  });
+  const savedRoomPasswordsRef = useRef(savedRoomPasswords);
+  useEffect(() => {
+    savedRoomPasswordsRef.current = savedRoomPasswords;
+  }, [savedRoomPasswords]);
   const [pendingRoomForPassword, setPendingRoomForPassword] = useState<Room | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [passwordModalError, setPasswordModalError] = useState('');
@@ -561,12 +573,13 @@ export default function App() {
                 // Auto-join target room upon connection initialization
                 const targetRoomId = currentRoomIdRef.current || 'general';
                 const roomObj = (data.rooms || roomsRef.current).find((r: Room) => r.id === targetRoomId);
+                const passwordToPass = savedRoomPasswordsRef.current[targetRoomId] || roomObj?.password;
                 if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
                   wsRef.current.send(
                     JSON.stringify({
                       type: 'join_room',
                       roomId: targetRoomId,
-                      password: roomObj?.password,
+                      password: passwordToPass,
                       username: userProfileRef.current.username,
                       avatar: userProfileRef.current.avatar
                     })
@@ -855,13 +868,20 @@ export default function App() {
             if (Array.isArray(fetchedMsgs) && fetchedMsgs.length > 0) {
               setAllRoomMessages((prev) => {
                 const currentMsgs = prev[currentRoomId] || [];
+                const msgMap = new Map<string, Message>();
+                currentMsgs.forEach((m) => msgMap.set(m.id, m));
+                fetchedMsgs.forEach((m) => msgMap.set(m.id, m));
+                const merged = Array.from(msgMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+
                 if (
-                  currentMsgs.length === fetchedMsgs.length &&
-                  currentMsgs[currentMsgs.length - 1]?.id === fetchedMsgs[fetchedMsgs.length - 1]?.id
+                  currentMsgs.length === merged.length &&
+                  currentMsgs[currentMsgs.length - 1]?.id === merged[merged.length - 1]?.id
                 ) {
                   return prev;
                 }
-                return { ...prev, [currentRoomId]: fetchedMsgs };
+                const next = { ...prev, [currentRoomId]: merged };
+                try { localStorage.setItem(LOCAL_STORAGE_MSGS_KEY, JSON.stringify(next)); } catch {}
+                return next;
               });
             }
           } else if (msgsRes.status === 404) {
@@ -883,8 +903,16 @@ export default function App() {
     setCurrentRoomId(roomId);
     setTypingUsers([]);
 
+    if (passwordAttempt) {
+      setSavedRoomPasswords((prev) => {
+        const next = { ...prev, [roomId]: passwordAttempt };
+        try { localStorage.setItem(LOCAL_STORAGE_ROOM_PASSWORDS_KEY, JSON.stringify(next)); } catch {}
+        return next;
+      });
+    }
+
     const targetRoomObj = roomsRef.current.find((r) => r.id === roomId);
-    const passwordToPass = passwordAttempt || targetRoomObj?.password;
+    const passwordToPass = passwordAttempt || savedRoomPasswordsRef.current[roomId] || targetRoomObj?.password;
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(
@@ -922,6 +950,12 @@ export default function App() {
     if (!pendingRoomForPassword) return;
 
     const roomId = pendingRoomForPassword.id;
+    setSavedRoomPasswords((prev) => {
+      const next = { ...prev, [roomId]: enteredPassword };
+      try { localStorage.setItem(LOCAL_STORAGE_ROOM_PASSWORDS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+
     setIsPasswordModalOpen(false);
     setPasswordModalError('');
     enterRoom(roomId, enteredPassword);
@@ -1012,13 +1046,17 @@ export default function App() {
         wsRef.current.send(
           JSON.stringify({
             type: 'send_message',
+            id: newMsg.id,
             roomId: currentRoomId,
             text: payload.text,
             msgType: payload.msgType,
             mediaUrl: payload.mediaUrl,
             fileName: payload.fileName,
             codeLang: payload.codeLang,
-            replyTo: payload.replyTo
+            replyTo: payload.replyTo,
+            userId: userProfile.userId,
+            username: userProfile.username,
+            avatar: userProfile.avatar
           })
         );
       } catch (err) {
@@ -1031,6 +1069,7 @@ export default function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            id: newMsg.id,
             text: payload.text,
             msgType: payload.msgType,
             mediaUrl: payload.mediaUrl,
